@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PostgreSQL 데이터 뷰어</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" rel="stylesheet">
+    
+    <style>
+        /* Handsontable 컨테이너 높이 설정 */
+        #spreadsheet-container {
+            width: 100%;
+            height: 600px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-gray-800">건축물 데이터 뷰어 (테스트)</h1>
+
+        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-center gap-4">
+            
+            <div class="flex items-center space-x-2 flex-grow min-w-[250px]">
+                <label for="bjdNameInput" class="text-gray-700 font-semibold flex-shrink-0">법정동명:</label>
+                <input type="text" id="bjdNameInput" value="강남구" 
+                       class="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div class="flex items-center space-x-2 flex-grow min-w-[250px]">
+                <label for="landUseInput" class="text-gray-700 font-semibold flex-shrink-0">토지이용상황:</label>
+                <input type="text" id="landUseInput" placeholder="예: 주거용" 
+                       class="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+
+            <div class="flex space-x-4">
+                <button id="searchButton" 
+                        class="bg-blue-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200">
+                    조회
+                </button>
+                <button id="saveButton" 
+                        class="bg-green-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-700 transition duration-200"
+                        disabled>
+                    변경사항 저장
+                </button>
+            </div>
+        </div>
+
+
+        <div id="loadingIndicator" class="hidden text-center p-4">
+            <p class="text-lg text-gray-600">데이터를 불러오는 중...</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md">
+            <div id="spreadsheet-container"></div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('spreadsheet-container');
+        const searchButton = document.getElementById('searchButton');
+        const saveButton = document.getElementById('saveButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // ★★★ input 필드 ID 변경 및 추가 ★★★
+        const bjdNameInput = document.getElementById('bjdNameInput');
+        const landUseInput = document.getElementById('landUseInput');
+        
+        let hot; // Handsontable 인스턴스를 저장할 변수
+
+        // --- 1. 조회 버튼 클릭 이벤트 ---
+        searchButton.addEventListener('click', async () => {
+            // ★★★ 두 개의 input에서 값을 가져옴 ★★★
+            const bjdName = bjdNameInput.value;
+            const landUse = landUseInput.value;
+
+            if (!bjdName && !landUse) { // 둘 다 비어있으면 경고
+                alert("법정동명 또는 토지이용상황을 입력하세요.");
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            saveButton.disabled = true;
+            if (hot) {
+                hot.destroy(); // 기존 테이블 제거
+                hot = null;
+            }
+
+            try {
+                // ★★★ URL 쿼리 파라미터 생성 (두 값을 모두 보냄) ★★★
+                const queryParams = new URLSearchParams({
+                    bjd_name: bjdName,
+                    land_use: landUse
+                });
+
+                // Flask API 호출
+                const response = await fetch(`/api/get_data?${queryParams.toString()}`);
+                
+                if (!response.ok) {
+                    throw new Error(`서버 오류: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                loadingIndicator.classList.add('hidden');
+
+                if (data.length === 0) {
+                    alert("해당하는 데이터가 없습니다.");
+                    return;
+                }
+
+                // --- Handsontable 생성 ---
+                // (이하 로직은 기존과 동일)
+                // 1. 컬럼 헤더 동적 생성 (데이터의 key 값 사용)
+                const headers = Object.keys(data[0]);
+                
+                // 2. ctid 컬럼 설정 (업데이트용 키)
+                const ctidIndex = headers.indexOf('ctid');
+                const columnsConfig = headers.map(header => ({ data: header }));
+                
+                if (ctidIndex > -1) {
+                    // ctid 컬럼은 보이지만, 수정은 못하게 설정 (업데이트의 기준이 됨)
+                    columnsConfig[ctidIndex].readOnly = true; 
+                    columnsConfig[ctidIndex].className = 'htDimmed'; // 회색으로 표시
+                }
+
+                // 3. Handsontable 인스턴스 생성
+                hot = new Handsontable(container, {
+                    data: data,
+                    colHeaders: headers,       
+                    columns: columnsConfig,    
+                    rowHeaders: true,          
+                    width: '100%',
+                    height: '100%',
+                    stretchH: 'all',           
+                    contextMenu: true,         
+                    dropdownMenu: true,        
+                    filters: true,             
+                    manualColumnResize: true,  
+                    manualRowResize: true,     
+                    licenseKey: 'non-commercial-and-evaluation' 
+                });
+
+                saveButton.disabled = false; // 저장 버튼 활성화
+
+            } catch (error) {
+                loadingIndicator.classList.add('hidden');
+                console.error("조회 오류:", error);
+                alert(`데이터 조회 중 오류가 발생했습니다: ${error.message}`);
+            }
+        });
+
+        // --- 2. 저장 버튼 클릭 이벤트 ---
+        // (수정 사항 없음, 기존 로직과 동일)
+        saveButton.addEventListener('click', async () => {
+            if (!hot) {
+                alert("저장할 데이터가 없습니다.");
+                return;
+            }
+
+            const currentData = hot.getSourceData();
+
+            try {
+                const response = await fetch('/api/update_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(currentData),
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.status === 'success') {
+                    alert(result.message);
+                } else {
+                    throw new Error(result.error || "알 수 없는 저장 오류");
+                }
+
+            } catch (error) {
+                console.error("저장 오류:", error);
+                alert(`데이터 저장 중 오류가 발생했습니다: ${error.message}`);
+            }
+        });
+
+    </script>
+</body>
+</html>
