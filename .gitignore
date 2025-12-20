@@ -1,2 +1,8 @@
 *.csv
 *.xlsx
+데이터프레임
+연속지적도_서울_5174
+용도지역_서울_5174
+.venv
+.env
+meta_info.txt

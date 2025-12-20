@@ -3,188 +3,1043 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PostgreSQL 데이터 뷰어</title>
+    <title>빌탐정</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Handsontable 컨테이너 높이 설정 */
-        #spreadsheet-container {
+        /* 기본 설정 */
+        body { font-family: 'Malgun Gothic', 'Dotum', sans-serif; font-size: 12px; color: #333; background-color: #f3f4f6; }
+        
+        /* Handsontable 높이 자동 조절 - 검색창이 줄어들었으므로 높이 계산 수정 */
+        #spreadsheet-container { width: 100%; height: calc(100vh - 220px); overflow: hidden; background: #fff; }
+        
+        /* 스크롤바 커스텀 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 아코디언 스타일 */
+        details > summary { list-style: none; cursor: pointer; user-select: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] > summary i.arrow-icon { transform: rotate(180deg); }
+        details > summary i.arrow-icon { transition: transform 0.2s; }
+
+        /* 마킹 버튼 */
+        .star-btn { display: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10; }
+        .handsontable td:hover .star-btn { display: block; }
+        .star-btn.active { display: block; color: #f59e0b; }
+
+        /* 드롭다운 */
+        .dropdown-list {
+            position: absolute; top: 100%; left: 0; min-width: 120px;
+            max-height: 150px; overflow-y: auto; background: white; border: 1px solid #ccc;
+            z-index: 50; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .dropdown-item { padding: 6px 10px; cursor: pointer; }
+        .dropdown-item:hover { background-color: #f3f4f6; }
+
+        /* 태그 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .tag-item { animation: fadeIn 0.2s ease-out; }
+
+        /* --- [New Style] 검색스타일_1번 CSS 통합 --- */
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background-color: #fff;
+            overflow: hidden;
+            transition: all 0.2s;
+            height: 30px; /* 기존 UI에 맞춰 높이 약간 조정 */
+        }
+
+        .input-wrapper:focus-within {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        /* 공통 인풋 스타일 */
+        .clean-input {
+            border: none;
+            outline: none;
+            padding: 0 8px;
+            font-size: 12px;
+            color: #374151;
             width: 100%;
-            height: 600px;
-            overflow: auto;
+            height: 100%;
+            text-align: right; /* 숫자/날짜 우측 정렬 */
+            background: transparent;
+        }
+        
+        /* 날짜 입력 필드 전용 */
+        .date-input {
+            font-family: monospace;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .arrow-btn {
+            width: 30px;
+            height: 100%;
+            border: none;
+            border-left: 1px solid #e5e7eb;
+            background-color: #f9fafb;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            transition: background 0.2s;
+            font-size: 11px;
+        }
+
+        .arrow-btn:hover {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .arrow-btn.up i { color: #ef4444; }   /* Up: Red (이상/이후) */
+        .arrow-btn.down i { color: #3b82f6; } /* Down: Blue (이하/이전) */
+
+        .label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #4b5563;
+            margin-right: 6px;
+            white-space: nowrap;
+        }
+        
+        /* 섹션 헤더 스타일 */
+        .section-mini-header {
+            font-size: 11px;
+            font-weight: bold;
+            color: #6b7280;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="flex flex-col h-screen overflow-hidden">
 
-    <div class="container mx-auto p-6">
-        <h1 class="text-3xl font-bold mb-6 text-gray-800">건축물 데이터 뷰어 (테스트)</h1>
-
-        <div class="bg-white p-4 rounded-lg shadow-md mb-6 flex flex-wrap items-center gap-4">
-            
-            <div class="flex items-center space-x-2 flex-grow min-w-[250px]">
-                <label for="bjdNameInput" class="text-gray-700 font-semibold flex-shrink-0">법정동명:</label>
-                <input type="text" id="bjdNameInput" value="강남구" 
-                       class="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            
-            <div class="flex items-center space-x-2 flex-grow min-w-[250px]">
-                <label for="landUseInput" class="text-gray-700 font-semibold flex-shrink-0">토지이용상황:</label>
-                <input type="text" id="landUseInput" placeholder="예: 주거용" 
-                       class="border border-gray-300 p-2 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-
-            <div class="flex space-x-4">
-                <button id="searchButton" 
-                        class="bg-blue-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-blue-700 transition duration-200">
-                    조회
-                </button>
-                <button id="saveButton" 
-                        class="bg-green-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-green-700 transition duration-200"
-                        disabled>
-                    변경사항 저장
-                </button>
-            </div>
+    <div class="bg-white border-b px-3 py-1.5 flex justify-between items-center shadow-sm z-20 h-[40px]">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-building text-blue-600"></i>
+            <span class="font-black text-base tracking-tight">빌<span class="text-blue-600">탐정</span></span>
+        </div>
+        <div class="flex gap-1.5">
+            <input type="text" id="mainSearchInput" class="border rounded px-2 py-0.5 text-xs w-52 focus:outline-blue-500" placeholder="통합 검색 (주소, 건물명)">
+            <button id="btnMainSearch" class="bg-blue-600 text-white px-2.5 py-0.5 rounded text-xs hover:bg-blue-700 transition"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
+            <button id="btnResetAll" class="bg-white border border-gray-300 text-gray-600 px-2.5 py-0.5 rounded text-xs hover:bg-gray-50 transition"><i class="fa-solid fa-rotate-right"></i> 초기화</button>
+            <button id="btnToggleUnit" class="bg-amber-500 text-white px-2.5 py-0.5 rounded text-xs hover:bg-amber-600 transition flex items-center gap-1">
+        <i class="fa-solid fa-ruler-combined"></i> <span id="unitText">평</span>
+    </button>
         </div>
 
+</div>
+    </div>
 
-        <div id="loadingIndicator" class="hidden text-center p-4">
-            <p class="text-lg text-gray-600">데이터를 불러오는 중...</p>
+    <div class="flex-none bg-white border-b z-10" style="max-height: 45vh; overflow-y: auto;">
+        
+        <details class="group bg-white w-full" open>
+            <summary class="px-3 py-2 bg-gray-50 hover:bg-gray-100 border-b flex justify-between items-center sticky top-0 z-20">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-700 flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-filter text-blue-500"></i> 검색 필터 및 설정
+                    </span>
+                    <i class="fa-solid fa-chevron-down arrow-icon text-gray-400 text-[10px]"></i>
+                </div>
+
+                
+
+                <button id="btnSaveData" disabled onclick="event.stopPropagation()" class="bg-blue-600 text-white px-4 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 transition shadow-sm flex items-center gap-1">
+                    <i class="fa-solid fa-floppy-disk"></i> 데이터 저장
+                </button>
+            </summary>
+
+            <div class="p-3 space-y-3">
+                
+                <div class="flex flex-col gap-2">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex items-center gap-1">
+                            <label class="text-xs font-bold text-gray-500 whitespace-nowrap">시군구</label>
+                            <select id="selRegionSigungu" class="w-24 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer hover:bg-gray-50">
+                                <option value="">선택</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <label class="text-xs font-bold text-gray-500 whitespace-nowrap" >법정동</label>
+                            <select id="selRegionDong" disabled class="w-24 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-gray-50 disabled:text-gray-400 cursor-pointer">
+                                <option value="">전체</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500 whitespace-nowrap">상세지번</span>
+                            <input type="text" id="BUNJISearchInput" class="border rounded px-2 py-1 text-xs w-28 focus:border-blue-500 outline-none">
+                        </div>
+                        <div id="regionTagContainer" class="flex-grow flex flex-wrap items-center gap-1 border-l pl-3 ml-1 min-h-[24px]">
+                            <span class="text-xs text-gray-300 py-0.5"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-grow gap-2 border-t pt-2 border-dashed">
+                    <div id="detailSelectGrid" class="flex flex-wrap gap-2 items-center"></div>
+                    <div id="detailTagContainer" class="flex-grow flex flex-wrap items-center gap-1 border-l pl-3 ml-1 min-h-[24px]">
+                        <span class="text-xs text-gray-300 py-0.5"></span>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
+                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">매매가</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="매매가">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="매매가">
+                        </div>
+                        <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <span class="text-xs font-bold text-gray-500">공시지가</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="공시지가">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="공시지가">
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
+                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">입지</span>
+                            <input type="text" class="range-input border rounded px-1 py-0.5 text-xs w-10 text-center" data-col="입지">
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">긴급도</span>
+                            <input type="text" class="range-input border rounded px-1 py-0.5 text-xs w-10 text-center" data-col="긴급도">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
+                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">대지</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="대지면적">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="대지면적">
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">연면적</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="연면적">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="연면적">
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">건축면적</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="건축면적">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="건축면적">
+                        </div>
+                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-xs font-bold text-gray-500">용적률산정용연면적</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="용적률산정용연면적">
+                            <span class="text-gray-400">~</span>
+                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="용적률산정용연면적">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-x-8 gap-y-3 border-t pt-2 border-dashed">
+                    <div class="flex items-center gap-4">
+                        <div class="section-mini-header"></div>
+                        
+                        <div class="flex items-center">
+                            <span class="label">엘리베이터</span>
+                            <div class="input-wrapper w-20">
+                                <input type="text" class="clean-input toggle-input" data-col="엘리베이터" oninput="onlyNumbers(this)">
+                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center">
+                            <span class="label">주차장</span>
+                            <div class="input-wrapper w-20">
+                                <input type="text" class="clean-input toggle-input" data-col="주차장" oninput="onlyNumbers(this)">
+                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200 gap-2">
+                            <div class="flex items-center">
+                                <span class="label text-gray-500" style="margin-right:4px;">지상</span>
+                                <div class="input-wrapper w-16">
+                                    <input type="text" class="clean-input toggle-input" data-col="규모지상" oninput="onlyNumbers(this)">
+                                    <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                        <i class="fa-solid fa-arrow-up"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="w-px h-3 bg-gray-300"></div>
+                            <div class="flex items-center">
+                                <span class="label text-gray-500" style="margin-right:4px;">지하</span>
+                                <div class="input-wrapper w-16">
+                                    <input type="text" class="clean-input toggle-input" data-col="규모지하" oninput="onlyNumbers(this)">
+                                    <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                        <i class="fa-solid fa-arrow-up"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4 pl-4 border-l">
+                        <div class="section-mini-header"></div>
+
+                        <div class="flex items-center">
+                            <span class="label">사용승인일</span>
+                            <div class="input-wrapper w-32">
+                                <input type="text" class="clean-input date-input toggle-input" data-col="사용승인일" maxlength="10" oninput="formatDate(this)">
+                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center">
+                            <span class="label">대수선</span>
+                            <div class="input-wrapper w-32">
+                                <input type="text" class="clean-input date-input toggle-input" data-col="대수선 및 리모델링" maxlength="10" oninput="formatDate(this)">
+                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <div class="flex-grow bg-white relative flex flex-col min-h-0">
+        
+        <div id="loadingSpinner" class="hidden absolute inset-0 bg-white/80 z-50 flex items-center justify-center">
+            <div class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                <span class="text-xs font-bold text-blue-600">데이터 불러오는 중...</span>
+            </div>
         </div>
-        <div class="bg-white rounded-lg shadow-md">
-            <div id="spreadsheet-container"></div>
+        
+        <div id="spreadsheet-container" class="border-b flex-grow"></div>
+
+        <div id="paginationContainer" class="hidden flex justify-center items-center gap-2 py-2 bg-gray-50 border-t mx-auto w-full">
+            <button id="btnPrevPage" class="px-2 py-0.5 bg-white border hover:bg-gray-100 rounded text-xs disabled:opacity-50"><i class="fa-solid fa-chevron-left"></i></button>
+            <span id="pageInfo" class="text-xs font-bold text-gray-600 mx-2">1 / 1</span>
+            <button id="btnNextPage" class="px-2 py-0.5 bg-white border hover:bg-gray-100 rounded text-xs disabled:opacity-50"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </div>
 
     <script>
-        const container = document.getElementById('spreadsheet-container');
-        const searchButton = document.getElementById('searchButton');
-        const saveButton = document.getElementById('saveButton');
-        const loadingIndicator = document.getElementById('loadingIndicator');
         
-        // ★★★ input 필드 ID 변경 및 추가 ★★★
-        const bjdNameInput = document.getElementById('bjdNameInput');
-        const landUseInput = document.getElementById('landUseInput');
-        
-        let hot; // Handsontable 인스턴스를 저장할 변수
+        // --- 데이터 상수 ---
+        const DIVISIONS = {
+    "강남구": ["개포동", "논현동", "대치동", "도곡동", "삼성동", "세곡동", "수서동", "신사동", "압구정동", "역삼동", "율현동", "일원동", "자곡동", "청담동"],
+    "강동구": ["강일동", "고덕동", "길동", "둔촌동", "명일동", "상일동", "성내동", "암사동", "천호동"],
+    "강북구": ["미아동", "번동", "수유동", "우이동"],
+    "강서구": ["가양동", "개화동", "공항동", "과해동", "내발산동", "등촌동", "마곡동", "방화동", "염창동", "오곡동", "오쇠동", "외발산동", "화곡동"],
+    "관악구": ["남현동", "봉천동", "신림동"],
+    "광진구": ["광장동", "구의동", "군자동", "능동", "자양동", "중곡동", "화양동"],
+    "구로구": ["가리봉동", "개봉동", "고척동", "구로동", "궁동", "신도림동", "오류동", "천왕동", "항동"],
+    "금천구": ["가산동", "독산동", "시흥동"],
+    "노원구": ["공릉동", "상계동", "월계동", "중계동", "하계동"],
+    "도봉구": ["도봉동", "방학동", "쌍문동", "창동"],
+    "동대문구": ["답십리동", "신설동", "용두동", "이문동", "장안동", "전농동", "제기동", "청량리동", "회기동", "휘경동"],
+    "동작구": ["노량진동", "대방동", "동작동", "본동", "사당동", "상도동", "신대방동", "흑석동"],
+    "마포구": ["공덕동", "당인동", "대흥동", "도화동", "동교동", "망원동", "마포동", "상수동", "상암동", "서교동", "성산동", "신공덕동", "신정동", "염리동", "연남동", "용강동", "중동", "창전동", "토정동", "하중동", "합정동", "아현동"],
+    "서대문구": ["냉천동", "남가좌동", "대현동", "미근동", "북가좌동", "북아현동", "봉원동", "신촌동", "연희동", "옥천동", "영천동", "창천동", "천연동", "충정로", "합동", "홍은동", "홍제동", "현저동"],
+    "서초구": ["내곡동", "반포동", "방배동", "서초동", "신원동", "양재동", "염곡동", "우면동", "원지동", "잠원동"],
+    "성동구": ["금호동1가", "금호동2가", "금호동3가", "금호동4가", "도선동", "마장동", "사근동", "상왕십리동", "성수동1가", "성수동2가", "송정동", "옥수동", "용답동", "하왕십리동", "행당동", "홍익동"],
+    "성북구": ["돈암동", "동선동", "보문동", "삼선동", "석관동", "성북동", "안암동", "장위동", "정릉동", "종암동", "길음동", "상월곡동", "하월곡동"],
+    "송파구": ["가락동", "거여동", "마천동", "문정동", "방이동", "삼전동", "석촌동", "송파동", "오금동", "오륜동", "잠실동", "장지동", "풍납동", "신천동"],
+    "양천구": ["목동", "신월동", "신정동"],
+    "영등포구": ["당산동", "대림동", "도림동", "문래동", "신길동", "양평동", "양화동", "여의도동", "영등포동"],
+    "용산구": ["갈월동", "남영동", "동빙고동", "동자동", "도원동", "보광동", "산천동", "서빙고동", "신계동", "용문동", "용산동1가", "용산동2가", "용산동3가", "용산동4가", "용산동5가", "용산동6가", "이촌동", "이태원동", "주성동", "청암동", "청파동1가", "청파동2가", "청파동3가", "한강로1가", "한강로2가", "한강로3가", "한남동", "효창동", "후암동", "원효로1가", "원효로2가", "원효로3가", "원효로4가"],
+    "은평구": ["갈현동", "구산동", "녹번동", "대조동", "불광동", "수색동", "신사동", "역촌동", "응암동", "증산동", "진관동"],
+    "종로구": ["가회동", "견지동", "경운동", "계동", "공평동", "관수동", "관훈동", "교남동", "교북동", "구기동", "궁정동", "권농동", "내수동", "내자동", "누상동", "누하동", "당주동", "도렴동", "돈의동", "동묘앞", "동숭동", "명륜1가", "명륜2가", "명륜3가", "명륜4가", "묘동", "무악동", "봉익동", "부암동", "사직동", "삼청동", "서린동", "세종로", "송월동", "송현동", "숭인동", "신교동", "신문로1가", "신문로2가", "신영동", "안국동", "연건동", "연지동", "예지동", "옥인동", "와룡동", "운니동", "원서동", "이화동", "익선동", "인의동", "장사동", "재동", "종로1가", "종로2가", "종로3가", "종로4가", "창성동", "창신동", "체부동", "청운동", "청진동", "충신동", "통인동", "평동", "평창동", "필운동", "행촌동", "혜화동", "홍영동", "홍지동", "홍파동", "화동", "효자동", "효제동"],
+    "중구": ["광희동1가", "광희동2가", "남대문로1가", "남창동", "남학동", "다동", "도화동", "만리동1가", "만리동2가", "무교동", "무학동", "묵정동", "방산동", "북창동", "봉래동1가", "봉래동2가", "산림동", "서소문동", "서초동", "소공동", "수표동", "수하동", "순화동", "신당동", "쌍림동", "예관동", "예장동", "오장동", "을지로1가", "을지로2가", "을지로3가", "을지로4가", "을지로5가", "을지로6가", "을지로7가", "의주로1가", "의주로2가", "인현동1가", "인현동2가", "입정동", "장교동", "장충동1가", "장충동2가", "저동1가", "저동2가", "정동", "주교동", "주자동", "중림동", "충정로1가", "태평로1가", "황학동", "흥인동"],
+    "중랑구": ["망우동", "면목동", "묵동", "상봉동", "신내동", "중화동"]
+};
 
-        // --- 1. 조회 버튼 클릭 이벤트 ---
-        searchButton.addEventListener('click', async () => {
-            // ★★★ 두 개의 input에서 값을 가져옴 ★★★
-            const bjdName = bjdNameInput.value;
-            const landUse = landUseInput.value;
+        const PREDEFINED_DATA = {
+    "주용도코드명": ["공공용시설", "공동주택", "공장", "관광휴게시설", "교육연구및복지시설", "교육연구시설", "교정및군사시설", "교정시설", "국방", "군사시설", "근린생활시설", "노유자시설", "다가구주택", "단독주택", "동물및식물관련시설", "묘지관련시설", "문화및집회시설", "발전시설", "방송통신시설", "분뇨.쓰레기처리시설", "수련시설", "숙박시설", "업무시설", "운동시설", "운수시설", "위락시설", "위험물저장및처리시설", "의료시설", "자동차관련시설", "자원순환관련시설", "장례시설", "제1종근린생활시설", "제2종근린생활시설", "종교시설", "창고시설", "판매및영업시설", "판매시설"],
+    "기타용도": ["가족호텔", "강당", "개인스튜디오", "게스트하우스", "게임제공업소", "경로당", "경비실", "고시원", "공공청사", "공동체주택", "공동주택", "공연장", "공장", "과학관", "관광호텔", "교회", "교육연구시설", "구내식당", "금융업소", "기숙사", "기계실", "기원", "노래연습장", "노유자시설", "노인복지시설", "단란주점", "단독주택", "단지형다세대", "다각구용", "다가구주택", "다동물사", "다방", "다세대주택", "다중생활시설", "다중주택", "대피소", "데이터센터", "독서실", "동물병원", "동주민센터", "동사무소", "마을회관", "매매장", "모텔", "목욕장", "목욕탕", "무도장", "문화및집회시설", "미술관", "미용실", "미용원", "박물관", "발전기실", "방재실", "백화점", "병원", "보건소", "보육시설", "부동산중개업소", "분뇨.쓰레기처리시설", "사무소", "사무실", "사우나", "사찰", "사진관", "산후조리원", "상가", "서점", "성당", "세탁소", "세차장", "소매점", "소형주택", "소방서", "수녀원", "수도원", "수련시설", "숙박시설", "승강기실", "실버케어센터", "식당", "시장", "아파트", "아파트형공장", "안마시술소", "어린이집", "에어로빅실", "여관", "여객자동차터미널", "여인숙", "연결통로", "연립주택", "연구소", "영화관", "예식장", "오피스텔", "우체국", "운수시설", "원룸형주택", "위락시설", "위험물저장및처리시설", "의원", "이용원", "인터넷컴퓨터게임시설", "일반음식점", "자원순환관련시설", "장례시설", "장례식장", "저장고", "전기실", "전시장", "전통찻집", "점포", "정비공장", "제과점", "제조업소", "제조장", "종교시설", "종합병원", "주민공동시설", "주민복리시설", "주유소", "주차장", "주차타워", "지구대", "지식산업센터", "창고", "창고시설", "체력단련장", "체육도장", "치과의원", "카페", "커피숍", "테니스장", "통신실", "파출소", "판매시설", "편의점", "펌프실", "표구점", "하숙", "하역장", "학교", "학원", "한의원", "화장실", "회의장", "휴게음식점", "휘트니스", "MDF실"],
+    "지목명": ["공장용지", "대", "잡종지", "주차장"],
+    "용도지역": ["근린상업지역", "도시지역기타", "보전녹지지역", "생산녹지지역", "유통상업지역", "일반상업지역", "일반주거지역", "자연녹지지역", "전용주거지역", "제1종일반주거지역", "제1종전용주거지역", "제2종일반주거지역", "제2종전용주거지역", "제3종일반주거지역", "준공업지역", "준주거지역", "중심상업지역"],
+    "토지이용상황": ["골프장 회원제", "공업기타", "공업나지", "공업용", "공원등", "공항", "과수원", "기타", "다세대", "단독", "답", "답기타", "도로등", "물류터미널", "발전소", "상업기타", "상업나지", "상업용", "아파트", "업무용", "여객자동차터미널", "연립", "운동장등", "위험시설", "유해.혐오시설", "임야기타", "자연림", "전", "전기타", "전창고", "전축사", "조림", "주거기타", "주거나지", "주상기타", "주상나지", "주상용", "주차장등", "콘도미니엄", "토지임야", "특수기타", "하천등"],
+    "도로접면": ["광대로한면", "광대세각", "광대소각", "맹지", "세로각지(가)", "세로각지(불)", "세로한면(가)", "세로한면(불)", "소로각지", "소로한면", "중로각지", "중로한면", "지정되지않음"],
+    "형상": ["가로장방", "부정형", "사다리형", "세로장방", "자루형", "정방형", "지정되지않음"]
+};
 
-            if (!bjdName && !landUse) { // 둘 다 비어있으면 경고
-                alert("법정동명 또는 토지이용상황을 입력하세요.");
-                return;
-            }
+        const COLUMN_MAP = {
+            '시/도': '시도', '시/군/구': '시군구', '주소': '주소',
+            '지목명': '지목', '지형형상': '형상', '도로접면': '도로',
+            '대지면적': '대지면적', '연면적': '연면적', '건축면적': '건축면적',
+            '토지이용상황':'토지이용상황',
+            '용도지역': '용도지역', '주용도코드명': '주용도', '기타용도내용': '기타용도',
+            '건폐율': '건폐율', '법정건폐율': '법정건폐율', '건폐율 - 법정건폐율': '건폐율법정건폐율',
+            '용적률': '용적률', '법정용적율': '법정용적률', '용적률 - 법정용적률': '용적률법정용적률',
+            '용적률산정연면적': '용적률산정용연면적',
+            '규모지상': '규모지상', '규모지하': '규모지하', '엘리베이터': '엘리베이터',
+            '주차장': '주차장', // parking_count 대신 DB컬럼명 통일 가정
+            '사용승인일': '사용승인일', '대수선 및 리모델링': '대수선및리모델링',
+            '구분상가': '구분상가구분',
+            '공시지가(현재)': '공시지가',
+            '공시지가(5년전)': '공시지가5년전',
+            '공시지가(10년전)': '공시지가10년전', 
+            '공시지가 상승률(5년)': '공시지가상승률5년',
+            '공시지가 상승률(10년)': '공시지가상승률10년',
+            '공시지가 기준': '공시지가기준',
+            '매매가(억)': '매매가억', '총공시지가와 매매가 비율': '총공시지가와매매가비율',
+            '상황': '상황', '긴급도': '긴급도', '등급': '등급', '컨디션': '컨디션', '입지': '입지',
+            '매수의향서':'매수의향서','연락처':'연락처','성향':'성향','관계':'관계','사진':'사진','브리핑':'브리핑',
+            '두꺼비광고등록유무':'두꺼비광고등록유무','건물용도':'건물용도','신축비용':'신축비용','리모델링비용':'리모델링비용','지주상황':'지주상황',
+            '명도':'명도','용도변경':'용도변경','멸실':'멸실','영상번호/분/초':'영상번호분초',
+            'AI추정가':'AI추정가','AI추정가와 매매가 비율':'AI추정가 매매가 비율','총보증금':'총보증금','총월세(부가세 별도)':'총월세부가세별도','총관리비':'총관리비','수익률':'수익률'
+        };
 
-            loadingIndicator.classList.remove('hidden');
-            saveButton.disabled = true;
+        // 역매핑 (DB컬럼명 -> 표기명): 데이터 로드 시 매칭용 (필요시 사용)
+        const DB_TO_DISPLAY = Object.fromEntries(Object.entries(COLUMN_MAP).map(([k, v]) => [v, k]));
+
+        const TARGET_COLUMNS = Object.keys(COLUMN_MAP);
+
+        let hot = null;
+        let wishlistMap = {};
+        let savedColumnOrder = [];
+        let existingGroups = new Set();
+        let currentPage = 1;
+        const ITEMS_PER_PAGE = 100;
+        let currentFilters = {};
+        let totalRows = 0;
+
+        // 선택된 태그 상태 관리
+        let selectedRegionSet = new Set();
+        let selectedDetailSet = new Set();
+
+        let isPyungMode = false; // false: m2, true: 평
+        const PYUNG_FACTOR = 0.3025; // m2 -> 평 변환 계수
+
+        const els = {
+            searchInput: document.getElementById('mainSearchInput'),
+            searchBtn: document.getElementById('btnMainSearch'),
+            resetBtn: document.getElementById('btnResetAll'),
+            colorPicker: document.getElementById('markColorPicker'),
+            groupNameInput: document.getElementById('markGroupName'),
+            groupDropdown: document.getElementById('groupDropdown'),
+            spinner: document.getElementById('loadingSpinner'),
+            bunjiInput: document.getElementById('BUNJISearchInput'),
+            paginationContainer: document.getElementById('paginationContainer'),
+            btnPrev: document.getElementById('btnPrevPage'),
+            btnNext: document.getElementById('btnNextPage'),
+            pageInfo: document.getElementById('pageInfo'),
+
+            // 지역 UI
+            selSigungu: document.getElementById('selRegionSigungu'),
+            selDong: document.getElementById('selRegionDong'),
+            regionTagContainer: document.getElementById('regionTagContainer'),
+
+            // 상세 조건 UI
+            detailSelectGrid: document.getElementById('detailSelectGrid'),
+            detailTagContainer: document.getElementById('detailTagContainer')
+        };
+
+        window.onload = async () => {
+            initRegionSelectors();
+            initDetailSelectors();
+            await Promise.all([loadWishlist(), loadColumnSettings()]);
+            // setupGroupDropdown();
+            setupPaginationEvents();
+            setupEnterKeySearch();
+
+            document.getElementById('btnToggleUnit').addEventListener('click', function() {
+            isPyungMode = !isPyungMode;
+            
+            // 버튼 텍스트 변경
+            const unitText = document.getElementById('unitText');
+            unitText.innerText = isPyungMode ? "㎡" : "평";
+            
+            // 테이블 다시 그리기 (렌더러가 호출됨)
             if (hot) {
-                hot.destroy(); // 기존 테이블 제거
-                hot = null;
-            }
-
-            try {
-                // ★★★ URL 쿼리 파라미터 생성 (두 값을 모두 보냄) ★★★
-                const queryParams = new URLSearchParams({
-                    bjd_name: bjdName,
-                    land_use: landUse
-                });
-
-                // Flask API 호출
-                const response = await fetch(`/api/get_data?${queryParams.toString()}`);
-                
-                if (!response.ok) {
-                    throw new Error(`서버 오류: ${response.statusText}`);
-                }
-                
-                const data = await response.json();
-                loadingIndicator.classList.add('hidden');
-
-                if (data.length === 0) {
-                    alert("해당하는 데이터가 없습니다.");
-                    return;
-                }
-
-                // --- Handsontable 생성 ---
-                // (이하 로직은 기존과 동일)
-                // 1. 컬럼 헤더 동적 생성 (데이터의 key 값 사용)
-                const headers = Object.keys(data[0]);
-                
-                // 2. ctid 컬럼 설정 (업데이트용 키)
-                const ctidIndex = headers.indexOf('ctid');
-                const columnsConfig = headers.map(header => ({ data: header }));
-                
-                if (ctidIndex > -1) {
-                    // ctid 컬럼은 보이지만, 수정은 못하게 설정 (업데이트의 기준이 됨)
-                    columnsConfig[ctidIndex].readOnly = true; 
-                    columnsConfig[ctidIndex].className = 'htDimmed'; // 회색으로 표시
-                }
-
-                // 3. Handsontable 인스턴스 생성
-                hot = new Handsontable(container, {
-                    data: data,
-                    colHeaders: headers,       
-                    columns: columnsConfig,    
-                    rowHeaders: true,          
-                    width: '100%',
-                    height: '100%',
-                    stretchH: 'all',           
-                    contextMenu: true,         
-                    dropdownMenu: true,        
-                    filters: true,             
-                    manualColumnResize: true,  
-                    manualRowResize: true,     
-                    licenseKey: 'non-commercial-and-evaluation' 
-                });
-
-                saveButton.disabled = false; // 저장 버튼 활성화
-
-            } catch (error) {
-                loadingIndicator.classList.add('hidden');
-                console.error("조회 오류:", error);
-                alert(`데이터 조회 중 오류가 발생했습니다: ${error.message}`);
+                hot.render();
             }
         });
+        };
 
-        // --- 2. 저장 버튼 클릭 이벤트 ---
-        // (수정 사항 없음, 기존 로직과 동일)
-        saveButton.addEventListener('click', async () => {
-            if (!hot) {
-                alert("저장할 데이터가 없습니다.");
-                return;
-            }
+        // =========================================================
+        // 1. 지역 선택 로직 (New Style 4)
+        // =========================================================
+        function initRegionSelectors() {
+            // 시군구 채우기
+            Object.keys(DIVISIONS).forEach(si => {
+                const opt = document.createElement('option');
+                opt.value = si;
+                opt.innerText = si;
+                els.selSigungu.appendChild(opt);
+            });
 
-            const currentData = hot.getSourceData();
+            // 시군구 변경 시
+            els.selSigungu.addEventListener('change', () => {
+                const si = els.selSigungu.value;
+                els.selDong.innerHTML = '<option value="" disabled selected>선택</option>';
+                
+                if (si && DIVISIONS[si]) {
+                    els.selDong.disabled = false;
+                    els.selDong.classList.replace('bg-gray-50', 'bg-white');
+                    
+                    // 전체 옵션
+                    const allOpt = document.createElement('option');
+                    allOpt.value = "전체";
+                    allOpt.innerText = `${si} 전체`;
+                    allOpt.className = "font-bold text-blue-600";
+                    els.selDong.appendChild(allOpt);
 
-            try {
-                const response = await fetch('/api/update_data', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(currentData),
-                });
-
-                const result = await response.json();
-
-                if (response.ok && result.status === 'success') {
-                    alert(result.message);
+                    // 동 옵션
+                    DIVISIONS[si].forEach(dong => {
+                        const opt = document.createElement('option');
+                        opt.value = dong;
+                        opt.innerText = dong;
+                        els.selDong.appendChild(opt);
+                    });
                 } else {
-                    throw new Error(result.error || "알 수 없는 저장 오류");
+                    els.selDong.disabled = true;
+                    els.selDong.classList.replace('bg-white', 'bg-gray-50');
                 }
+            });
 
-            } catch (error) {
-                console.error("저장 오류:", error);
-                alert(`데이터 저장 중 오류가 발생했습니다: ${error.message}`);
-            }
+            // 읍면동 선택 (자동 추가)
+            els.selDong.addEventListener('change', () => {
+                const si = els.selSigungu.value;
+                const dong = els.selDong.value;
+                if (!si || !dong) return;
+
+                const val = (dong === "전체") ? `${si} 전체` : `${si} ${dong}`;
+                if (selectedRegionSet.has(val)) {
+                    alert("이미 추가된 지역입니다.");
+                } else {
+                    addTag(selectedRegionSet, els.regionTagContainer, val);
+                }
+                els.selDong.value = ""; // 초기화
+            });
+        }
+
+        // =========================================================
+        // 2. 상세 조건 로직 (스타일 최적화 적용)
+        // =========================================================
+        function initDetailSelectors() {
+            els.detailSelectGrid.innerHTML = '';
+            
+            Object.entries(PREDEFINED_DATA).forEach(([key, values]) => {
+                // Wrapper - 공간 절약을 위해 block이 아닌 컴팩트한 flex 아이템으로 변경
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex items-center"; // Layout change
+                
+                // Select - w-full 제거, 글자 크기 축소, 패딩 축소
+                const select = document.createElement('select');
+                select.className = "border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer hover:bg-gray-50";
+                // 플레이스홀더처럼 보이게 처리
+                select.innerHTML = `<option value="" disabled selected>${key}</option>`;
+                
+                values.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v;
+                    opt.innerText = v;
+                    select.appendChild(opt);
+                });
+
+                // Event Listener (로직 유지)
+                select.addEventListener('change', () => {
+                    const val = select.value;
+                    if (!val) return;
+                    
+                    const tagKey = `${key}:${val}`; // 구분용 Key
+                    const display = `${key} - ${val}`;
+
+                    if (selectedDetailSet.has(tagKey)) {
+                        alert("이미 선택된 조건입니다.");
+                    } else {
+                        addTag(selectedDetailSet, els.detailTagContainer, display, tagKey);
+                    }
+                    select.value = ""; // 초기화
+                });
+
+                wrapper.appendChild(select);
+                els.detailSelectGrid.appendChild(wrapper);
+            });
+        }
+
+        // =========================================================
+        // 3. 공통 태그 관리 함수
+        // =========================================================
+        function addTag(setObj, container, displayText, actualKey = null) {
+            const key = actualKey || displayText;
+            
+            // UI 초기화 (placeholder 제거)
+            if (setObj.size === 0) container.innerHTML = '';
+
+            setObj.add(key);
+
+            const tag = document.createElement('span');
+            // 태그 스타일도 조금 더 작게 수정
+            tag.className = "tag-item bg-blue-50 border border-blue-200 text-blue-700 px-1.5 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 shadow-sm";
+            tag.innerHTML = `
+                ${displayText}
+                <i class="fa-solid fa-xmark cursor-pointer text-blue-400 hover:text-red-500 transition text-[10px]"></i>
+            `;
+            
+            // 삭제 이벤트
+            tag.querySelector('i').onclick = () => {
+                setObj.delete(key);
+                tag.remove();
+                if (setObj.size === 0) {
+                    container.innerHTML = `<span class="text-xs text-gray-300 py-0.5">미선택</span>`;
+                }
+            };
+
+            container.appendChild(tag);
+        }
+
+        // =========================================================
+        // 4. 검색 & 필터 수집 로직 (기존 유지)
+        // =========================================================
+        els.searchBtn.addEventListener('click', () => { currentFilters = collectFilters(); currentPage = 1; fetchData(1); });
+        els.resetBtn.addEventListener('click', () => {
+            // 1. 선택된 태그 및 세트 초기화
+            selectedRegionSet.clear(); 
+            selectedDetailSet.clear();
+            els.regionTagContainer.innerHTML = '<span class="text-xs text-gray-300 py-0.5">지역 미선택</span>';
+            els.detailTagContainer.innerHTML = '<span class="text-xs text-gray-300 py-0.5">상세조건 미선택</span>';
+            
+            // 2. 지역 선택 셀렉트 박스 초기화
+            els.selSigungu.value = ""; 
+            els.selDong.innerHTML = '<option value="">선택</option>';
+            els.selDong.disabled = true; 
+            els.selDong.classList.replace('bg-white', 'bg-gray-50');
+            
+            // 3. 상세조건 셀렉트 박스 초기화
+            document.querySelectorAll('#detailSelectGrid select').forEach(s => s.value = "");
+            
+            // 4. [수정됨] 입력 필드 초기화 
+            // .toggle-input (새로 추가된 엘리베이터, 날짜 등) 클래스 추가
+            document.querySelectorAll('.range-input, .toggle-input, #BUNJISearchInput, #mainSearchInput').forEach(inp => inp.value = '');
+
+            // 5. [추가됨] 화살표 버튼 상태 초기화 (모두 UP/빨강 상태로 복귀)
+            document.querySelectorAll('.arrow-btn').forEach(btn => {
+                const icon = btn.querySelector('i');
+                
+                // 버튼 클래스 초기화
+                btn.classList.remove('down');
+                btn.classList.add('up');
+                
+                // 아이콘 클래스 초기화
+                if (icon) {
+                    icon.classList.remove('fa-arrow-down');
+                    icon.classList.add('fa-arrow-up');
+                }
+            });
         });
 
+        // 화살표 토글 함수 (▲ <-> ▼)
+        function toggleArrow(btn) {
+            const icon = btn.querySelector('i');
+            
+            if (icon.classList.contains('fa-arrow-up')) {
+                // Up -> Down (이하/이전)
+                icon.classList.remove('fa-arrow-up');
+                icon.classList.add('fa-arrow-down');
+                btn.classList.remove('up');
+                btn.classList.add('down');
+            } else {
+                // Down -> Up (이상/이후)
+                icon.classList.remove('fa-arrow-down');
+                icon.classList.add('fa-arrow-up');
+                btn.classList.remove('down');
+                btn.classList.add('up');
+            }
+        }
+
+        // 날짜 자동 포맷팅 (YYYY-MM-DD)
+        function formatDate(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value.length > 4 && value.length <= 6) {
+                value = value.slice(0, 4) + '-' + value.slice(4);
+            } else if (value.length > 6) {
+                value = value.slice(0, 4) + '-' + value.slice(4, 6) + '-' + value.slice(6);
+            }
+            if (value.length > 10) value = value.slice(0, 10);
+            input.value = value;
+        }
+
+        // 숫자만 입력
+        function onlyNumbers(input) {
+            input.value = input.value.replace(/[^0-9]/g, '');
+        }
+
+        function collectFilters() {
+            const sigunguList = []; const dongList = [];
+            selectedRegionSet.forEach(val => {
+                const parts = val.split(" ");
+                const si = parts[0]; const dong = parts[1];
+                if (!sigunguList.includes(si)) sigunguList.push(si);
+                if (dong !== "전체" && !dongList.includes(dong)) dongList.push(dong);
+            });
+
+            const multiFilters = {};
+            selectedDetailSet.forEach(val => {
+                const [displayKey, value] = val.split(":");
+                const dbKey = COLUMN_MAP[displayKey] || displayKey; 
+                if (!multiFilters[dbKey]) multiFilters[dbKey] = [];
+                multiFilters[dbKey].push(value);
+            });
+
+            const keyword = els.searchInput.value;
+            const bunji = els.bunjiInput.value;
+            
+            const ranges = {};
+            const dateRange = { start: '', end: '' };
+
+            
+
+            // 1. 기존 Range Input 처리 (Min ~ Max)
+            document.querySelectorAll('.range-input').forEach(input => {
+                const col = input.dataset.col; 
+                if (input.value) {
+                    if (!ranges[col]) ranges[col] = {};
+                    const isMin = input.nextElementSibling && input.nextElementSibling.tagName === 'SPAN';
+                    ranges[col][isMin ? 'min' : 'max'] = input.value;
+                }
+            });
+
+            // 2. [New] Toggle Input 처리 (화살표 방향에 따라 Min/Max 결정)
+            document.querySelectorAll('.toggle-input').forEach(input => {
+                const val = input.value;
+                if (!val) return;
+
+                const col = input.dataset.col; // 예: 엘리베이터, 사용승인일
+                const btn = input.nextElementSibling;
+                // Up(Red) = 이상(>=, min), Down(Blue) = 이하(<=, max)
+                const isUp = btn.classList.contains('up'); 
+                const rangeKey = isUp ? 'min' : 'max';
+
+                // 날짜 컬럼 특수 처리 (app.py 구조에 맞춤)
+                if (col === '사용승인일') {
+                    if (isUp) dateRange.start = val;
+                    else dateRange.end = val;
+                } else {
+                    // 일반 숫자 (엘리베이터, 주차장 등) 및 기타 날짜
+                    if (!ranges[col]) ranges[col] = {};
+                    ranges[col][rangeKey] = val;
+                }
+            });
+
+            return { keyword, bunji, sigungu: sigunguList, bjd: dongList, multi_filters: multiFilters, ranges, date_range: dateRange };
+        }
+
+        // =========================================================
+        // 5. 서버 통신 및 테이블 렌더링 (★수정됨★)
+        // =========================================================
+        async function fetchData(page) {
+            els.spinner.classList.remove('hidden');
+            try {
+                const res = await fetch('/api/get_data', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ ...currentFilters, page, limit: ITEMS_PER_PAGE })
+                });
+                const responseData = await res.json();
+                const data = responseData.data || [];
+                totalRows = responseData.total || 0;
+                currentPage = responseData.page || 1;
+
+                renderTable(data);
+                document.getElementById('btnSaveData').disabled = (data.length === 0);
+                updatePaginationUI();
+            } catch (e) { console.error(e); } finally { els.spinner.classList.add('hidden'); }
+        }
+
+        function renderTable(data) {
+
+            const container = document.getElementById('spreadsheet-container');
+            if (hot) hot.destroy();
+            
+            // 저장된 순서가 있으면 그걸 쓰고, 없으면 기본 순서(TARGET_COLUMNS = Display Names)
+            const displayHeaderOrder = savedColumnOrder.length > 0 ? savedColumnOrder : TARGET_COLUMNS;
+            
+            // ★ [핵심] config 생성 시 data 속성을 DB컬럼명으로 매핑
+            const columnsConfig = displayHeaderOrder.map(headerName => getColumnConfig(headerName));
+
+            hot = new Handsontable(container, {
+                data: data, // 데이터는 DB컬럼명을 키로 가짐
+                colHeaders: displayHeaderOrder, // 헤더는 노출값(Display Name)
+                columns: columnsConfig, // 매핑 정보
+                rowHeaders: true, height: '100%', width: '100%',
+                licenseKey: 'non-commercial-and-evaluation',
+                manualColumnMove: true, manualColumnResize: true, filters: true,
+                dropdownMenu: true, contextMenu: true,
+                afterColumnMove: (m, f, d, p, changed) => { if(changed) saveColumnOrder(); }
+            });
+        }
+
+        function getColumnConfig(displayHeader) {
+            // ★ 노출값(displayHeader) -> DB컬럼명(dbKey) 변환
+            const dbKey = COLUMN_MAP[displayHeader] || displayHeader;
+
+            const config = { 
+                data: dbKey, // 데이터 바인딩은 DB 컬럼명으로
+                // renderer: Handsontable.renderers.TextRenderer 
+            };
+
+            // 읽기 전용 컬럼 설정 (ctid, 주소, 승인일 등)
+            if (dbKey === 'ctid' || displayHeader === '주소' || displayHeader.includes('승인일')) config.readOnly = true;
+            
+            // 렌더러 설정
+            const dateCols = ['사용승인일', '대수선 및 리모델링'];
+            if (displayHeader === '주소') config.renderer = addressRenderer;
+            if (dateCols.includes(displayHeader)) config.renderer = dateRenderer;
+            
+
+            // 포맷팅 그룹 정의 (노출값 기준 or DB값 기준 상관없으나 노출값 기준으로 분류)
+            const moneyCols = ['공시지가(현재)', '공시지가(5년전)', '공시지가(10년전)', '공시지가 기준', '매매가(억)'];
+            const decimalCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적']; 
+            const percentCols = displayHeader.includes('비율') || displayHeader.includes('상승률') || displayHeader.includes('건폐율') || (displayHeader.includes('용적률') && (!displayHeader.includes('용적률산정용연면적')));
+
+            if (moneyCols.includes(displayHeader)) {
+                
+                config.type = 'numeric'; config.numericFormat = { pattern: '0,0' };
+            } else if (decimalCols.includes(displayHeader)) {
+                
+                config.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+            // 기본 텍스트 렌더러 적용
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+            
+            if (value !== null && value !== undefined && value !== "") {
+                const numValue = parseFloat(value);
+                if (!isNaN(numValue)) {
+                    if (isPyungMode) {
+                        // 평으로 변환 (소수점 2자리)
+                        const pyungVal = (numValue * PYUNG_FACTOR).toFixed(2);
+                        td.innerText = pyungVal + " 평";
+                        
+                    } else {
+                        // m2 그대로 표시 (천단위 콤마)
+                        td.innerText = numValue.toLocaleString() + " ㎡";
+                        
+                    }
+                }
+            }
+            td.style.textAlign = 'right'; // 우측 정렬
+        };
+            } else if (percentCols) {
+                
+                config.type = 'numeric'; config.numericFormat = { pattern: '00.[00]' };
+                config.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                    Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                    
+                    if (value !== null && !isNaN(value)){
+                        const numValue = parseFloat(value);
+
+                        if (numValue < 0) td.style.backgroundColor = "#f58f5f";
+                        else if (numValue > 0) td.style.backgroundColor = "#61b7f4"
+                        else td.style.backgroundColor = '';
+                        
+                        td.innerText += '%';
+                    } 
+                    else {
+                        td.style.backgroundColor = '';
+                        td.style.color = '';
+                    }
+                };
+            }
+
+            // 매매가 강조
+            if (displayHeader === '매매가(억)') {
+                config.renderer = function(instance, td, row, col, prop, value, cp) {
+                    Handsontable.renderers.NumericRenderer.apply(this, arguments);
+                    td.style.fontWeight = 'bold';
+                };
+            }
+            return config;
+        }
+
+        function addressRenderer(instance, td, row, col, prop, value, cellProperties) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+            if (!value) return;
+            const markInfo = wishlistMap[value];
+            if (markInfo) {
+                td.style.backgroundColor = markInfo.color;
+                td.style.fontWeight = 'bold';
+            }
+            const iconClass = markInfo ? 'fa-solid fa-star text-yellow-500' : 'fa-regular fa-star text-gray-300';
+            const star = document.createElement('i');
+            star.className = `${iconClass} star-btn absolute right-2 top-1/2 -translate-y-1/2`;
+            star.onclick = (e) => { e.stopPropagation(); toggleMark(value); };
+            td.appendChild(star);
+        }
+
+        function dateRenderer(instance, td, row, col, prop, value) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+            // YYYYMMDD -> YYYY-MM-DD
+            if (value && String(value).length === 8) {
+                const s = String(value);
+                td.innerText = `${s.substring(0,4)}-${s.substring(4,6)}-${s.substring(6,8)}`;
+            } else if (value) {
+                td.innerText = value;
+            }
+        }
+
+        // --- 기타 기능 (페이지네이션, 마킹 등) ---
+        function updatePaginationUI() {
+            const maxPage = Math.ceil(totalRows / ITEMS_PER_PAGE) || 1;
+            els.pageInfo.innerText = `${currentPage} / ${maxPage}`;
+            els.btnPrev.disabled = (currentPage <= 1);
+            els.btnNext.disabled = (currentPage >= maxPage);
+            els.paginationContainer.classList.remove('hidden');
+        }
+        function setupPaginationEvents() {
+            els.btnPrev.addEventListener('click', () => { if(currentPage > 1) fetchData(--currentPage); });
+            els.btnNext.addEventListener('click', () => { 
+                const maxPage = Math.ceil(totalRows / ITEMS_PER_PAGE);
+                if(currentPage < maxPage) fetchData(++currentPage); 
+            });
+        }
+        async function loadWishlist() {
+            try {
+                const res = await fetch('/api/wishlist');
+                wishlistMap = await res.json();
+                existingGroups.clear();
+                Object.values(wishlistMap).forEach(item => { if(item.group_name) existingGroups.add(item.group_name); });
+            } catch {}
+        }
+        
+        // 컬럼 설정 불러오기: 저장된 값은 '노출값(Display Name)' 리스트여야 함
+        async function loadColumnSettings() {
+            try {
+                const res = await fetch('/api/settings/columns');
+                const data = await res.json();
+                if(data && data.length) savedColumnOrder = data;
+            } catch {}
+        }
+
+        window.toggleMark = async (address) => {
+            const isMarked = !!wishlistMap[address];
+            const color = els.colorPicker.value;
+            const group = els.groupNameInput.value;
+            try {
+                if (isMarked) {
+                    await fetch('/api/wishlist', { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ address }) });
+                    delete wishlistMap[address];
+                } else {
+                    await fetch('/api/wishlist', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ address, color, group_name: group }) });
+                    wishlistMap[address] = { color, group_name: group };
+                    existingGroups.add(group);
+                }
+                hot.render();
+            } catch { alert("저장 실패"); }
+        };
+
+        // 컬럼 순서 저장: 사용자가 보고 있는 '노출값' 순서를 저장
+        async function saveColumnOrder() {
+            const count = hot.countCols();
+            const newOrder = [];
+            // Handsontable의 colToProp는 'data' 키(DB컬럼명)를 반환할 수 있으므로, 
+            // 화면에 보이는 헤더명(노출값)을 가져오도록 로직 조정 필요.
+            // 하지만 Handsontable에서 colHeaders 배열 자체를 재정렬해서 관리하는게 아니라면,
+            // 여기서는 colHeaders[visualIndex]를 가져오는게 안전함.
+            
+            const settings = hot.getSettings();
+            const currentHeaders = settings.colHeaders; // 현재 설정된 헤더 배열
+            
+            for(let i=0; i<count; i++) {
+                const visualIndex = hot.toVisualColumn(i); // 물리 인덱스 -> 현재 보이는 인덱스 X
+                // afterColumnMove에서는 변경된 인덱스 정보를 이용해야 함.
+                // 가장 확실한 방법: hot.colHeaders 가 참조가 아니라 값이면 어렵지만,
+                // Handsontable 인스턴스에서 현재 보이는 컬럼의 헤더 텍스트를 가져옴
+                const headerText = hot.getColHeader(i); // i번째 보이는 컬럼의 헤더
+                newOrder.push(headerText);
+            }
+            
+            try { await fetch('/api/settings/columns', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ columns: newOrder }) }); } catch {}
+        }
+
+        document.getElementById('btnSaveData').addEventListener('click', async () => {
+            try {
+                // hot.getSourceData()는 DB컬럼명을 Key로 가진 객체 배열을 반환함 (config.data가 DB컬럼명이므로)
+                // 별도 변환 없이 그대로 전송하면 됨.
+                await fetch('/api/update_data', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(hot.getSourceData()) });
+                alert("저장되었습니다.");
+            } catch { alert("저장 실패"); }
+        });
+
+        function setupGroupDropdown() {
+            const input = els.groupNameInput;
+            const dropdown = els.groupDropdown;
+            input.addEventListener('focus', () => {
+                dropdown.innerHTML = '';
+                if(existingGroups.size === 0) dropdown.innerHTML = '<div class="p-2 text-gray-400 text-xs">그룹 없음</div>';
+                else existingGroups.forEach(g => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-item'; div.innerText = g;
+                    div.onclick = () => { input.value = g; dropdown.style.display = 'none'; };
+                    dropdown.appendChild(div);
+                });
+                dropdown.style.display = 'block';
+            });
+            document.addEventListener('click', (e) => { if(!e.target.closest('.group-selector-wrapper')) dropdown.style.display = 'none'; });
+        }
+
+        // --- [추가] 엔터키 입력 시 검색 실행 함수 ---
+        // --- [수정됨] 엔터키 입력 감지 (이벤트 위임 방식) ---
+        function setupEnterKeySearch() {
+            document.addEventListener('keydown', function(e) {
+                // 1. 눌린 키가 엔터(Enter)인지 확인
+                if (e.key !== 'Enter') return;
+
+                // 2. 현재 포커스된 요소가 우리가 원하는 입력창들인지 확인
+                const target = e.target;
+                const isSearchInput = 
+                    target.id === 'mainSearchInput' || 
+                    target.id === 'BUNJISearchInput' || 
+                    target.id === 'selRegionDong' ||
+                    target.id === 'detailSelectGrid' ||
+                    target.classList.contains('range-input') || 
+                    target.classList.contains('toggle-input');
+
+                // 3. 맞다면 검색 버튼 클릭 강제 실행
+                if (isSearchInput) {
+                    
+                    e.preventDefault(); // 줄바꿈 방지
+                    const btn = document.getElementById('btnMainSearch');
+                    if(btn) btn.click();
+                }
+            });
+        }
     </script>
 </body>
 </html>
