@@ -70,9 +70,9 @@ if __name__ == "__main__":
     print("💾 CSV 파일 읽는 중...")
     # CSV 파일 읽기 (한글 깨짐 방지를 위해 encoding 확인 필요, 보통 utf-8 또는 cp949)
     try:
-        df = pd.read_csv(CSV_FILE_PATH, encoding='utf-8')
+        df = pd.read_csv(CSV_FILE_PATH, encoding='utf-8', dtype="str")
     except UnicodeDecodeError:
-        df = pd.read_csv(CSV_FILE_PATH, encoding='cp949')
+        df = pd.read_csv(CSV_FILE_PATH, encoding='cp949', dtype="str")
 
     print(f"🚀 {len(df)}개 데이터 업로드 시작... (시간이 좀 걸릴 수 있습니다)")
 
