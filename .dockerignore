@@ -1,8 +1,7 @@
-*.csv
-*.xlsx
 .venv
 연속지적도_서울_5174
 용도지역_서울_5174
-metadata.py
-.env
-meta_info.txt
+.gitignore
+5174.py
+datamaker.py
+데이터프레임

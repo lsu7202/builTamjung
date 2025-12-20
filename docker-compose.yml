@@ -1,0 +1,36 @@
+services:
+  flask-web:
+    build: .
+    container_name: budongsan-data-flask
+    ports:
+      - "7070:7070"
+    restart: always
+    env_file:
+      - .env 
+    depends_on:
+      - postgres-db
+    volumes:
+      # 💡 개발용: 로컬 코드 변경 시 컨테이너에 바로 반영되도록 마운트
+      - .:/app
+
+  # 2. PostgreSQL 데이터베이스 서비스
+  postgres-db:
+    image: postgres:15-alpine           # 공식 PostgreSQL 이미지 사용
+    container_name: budongsan-data-db
+    ports:
+      - "5050:5432"
+    restart: always
+    # .env 파일에서 DB 초기 설정 변수 주입
+    environment:
+      # "내 .env에 있는 DB_NAME 값을 가져와서, 도커한테는 POSTGRES_DB라고 알려줘라"
+      POSTGRES_DB: ${DB_NAME}       
+      POSTGRES_USER: ${DB_USER}     
+      POSTGRES_PASSWORD: ${DB_PASS}
+    env_file:
+      - .env
+    volumes:
+      # 💡 DB 데이터 영구 저장을 위한 볼륨 설정
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
