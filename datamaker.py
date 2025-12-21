@@ -202,7 +202,7 @@ if df_land is not None and df_bldg is not None and df_gis is not None:
     
     if 'PNU' in df_gis.columns:
         df_gis['PNU'] = df_gis['PNU'].astype(str)
-        cols_to_merge = ['PNU', '건폐율(토지이음)', '용적률(토지이음)', '산정_층수', '상세내역', '원본_대지면적']
+        cols_to_merge = ['PNU', '건폐율(토지이음)', '용적률(토지이음)', '산정_층수', '상세내역']
         valid_gis_cols = [c for c in cols_to_merge if c in df_gis.columns]
         df_land = pd.merge(df_land, df_gis[valid_gis_cols], left_on='고유번호', right_on='PNU', how='left')
         
@@ -210,13 +210,13 @@ if df_land is not None and df_bldg is not None and df_gis is not None:
             '건폐율(토지이음)':'법정건폐율', 
             '용적률(토지이음)':'법정용적율', 
             '상세내역':'용도지역', 
-            '원본_대지면적':'대지면적' 
+             
         }, inplace=True)
 
     # [C] 건물 데이터 전처리
     print("   -> [3/6] 건물 데이터 컬럼 매핑...")
     rename_map_bldg = {
-        '대지_위치': '대지위치', '주_용도_코드_명': '주용도코드명', '대장_종류_코드_명': '대장구분코드명', '대장_구분_코드_명': '대장구분코드명',
+        '대지_위치': '대지위치', '주_용도_코드_명': '주용도코드명', '대장_종류_코드_명': '대장구분코드명', '대장_구분_코드_명': '대장구분코드명', '대지_면적':'대지면적',
         '연_면적': '연면적', '건축_면적': '건축면적', '건폐_율': '건폐율', '용적_율': '용적률', '용적_율_산정_연_면적': '용적률산정연면적',
         '사용_승인_일': '사용승인일자', '지상_층_수': '지상층수', '지하_층_수': '지하층수', '승용_승강기_수': '승용승강기수', '비상용_승강기_수': '비상용승강기수', '기타_용도': '기타용도내용'
     }
@@ -362,7 +362,114 @@ if df_land is not None and df_bldg is not None and df_gis is not None:
     df_to_upload = df_matched[available_cols].copy()
     df_to_upload.rename(columns=final_rename_map, inplace=True)
     
-    print(f"\n💾 저장 시작 ({len(df_to_upload)}건)...")
+    # -------------------------------------------------------
+    # [G] (수정됨) 대표지번에 부속지번 데이터 흡수 및 부속지번 행 삭제
+    # -------------------------------------------------------
+    input_file_relation = "부속지번_관계표.csv"  
+
+    if os.path.exists(input_file_relation):
+        print("\n🔍 [DEBUG] 부속지번 흡수 및 정리 작업 시작...")
+        try:
+            df_rel = pd.read_csv(input_file_relation, encoding='utf-8')
+            
+            df_to_upload['고유번호'] = df_to_upload['고유번호'].astype(str)
+            
+            # [함수] PNU 정규화 (11번째 대지구분코드 무시)
+            def get_normalized_pnu(pnu):
+                s = str(pnu).strip()
+                if len(s) == 19:
+                    return s[:10] + s[11:] # 11번째 자리 제외하고 합침
+                return s
+
+            # 1. Lookup Dictionary 생성 (Key: 정규화된 PNU)
+            pnu_lookup = {}
+            for idx, row in df_to_upload.iterrows():
+                norm_key = get_normalized_pnu(row['고유번호'])
+                pnu_lookup[norm_key] = {
+                    '대지면적': row['대지면적'],
+                    '용도지역': row['용도지역']
+                }
+            
+            absorption_map = {} 
+            pnu_to_remove_set = set() # [추가] 삭제할 부속지번 PNU(정규화됨)를 담을 집합
+            
+            # 2. 관계표 순회하며 흡수할 데이터 계산 및 삭제 대상 수집
+            for _, row in df_rel.iterrows():
+                raw_addr = str(row.get('대지위치', ''))
+                target_addr = clean_text(raw_addr.replace('번지', '')) 
+                
+                annex_pnus_str = str(row.get('부속지번', ''))
+                
+                if not annex_pnus_str or annex_pnus_str.lower() == 'nan': continue
+                
+                annex_pnus = [x.strip().replace('"', '').replace("'", "") for x in annex_pnus_str.split(',')]
+
+                added_area = 0.0
+                added_zones = []
+                
+                for pnu in annex_pnus:
+                    target_key = get_normalized_pnu(pnu)
+                    
+                    if target_key in pnu_lookup:
+                        # [추가] 데이터가 존재하면 삭제 목록에 추가
+                        pnu_to_remove_set.add(target_key)
+                        
+                        data_row = pnu_lookup[target_key]
+                        raw_area = data_row['대지면적']
+                        try:
+                            area_val = float(raw_area) if isinstance(raw_area, (int, float)) else clean_numeric_value(raw_area)
+                        except: area_val = 0.0
+                        added_area += area_val
+
+                        zone_val = str(data_row['용도지역']).strip()
+                        if zone_val and zone_val != 'nan': added_zones.append(zone_val)
+
+                if added_area > 0 or added_zones:
+                    absorption_map[target_addr] = {'add_area': added_area, 'add_zones': added_zones}
+
+            # 3. 데이터 흡수 적용 (대표지번 행 업데이트)
+            def apply_absorption(row):
+                addr = row['통합주소']
+                if addr in absorption_map:
+                    data = absorption_map[addr]
+                    
+                    old_area = row['대지면적']
+                    base_area = float(old_area) if isinstance(old_area, (int, float)) else clean_numeric_value(old_area)
+                    row['대지면적'] = base_area + data['add_area']
+                    
+                    current_zone = str(row['용도지역']).strip()
+                    if current_zone == 'nan': current_zone = ''
+                    annex_zone_str = ",".join(data['add_zones'])
+                    
+                    if current_zone and annex_zone_str: row['용도지역'] = f"{current_zone},{annex_zone_str}"
+                    elif annex_zone_str: row['용도지역'] = annex_zone_str
+                        
+                return row
+
+            df_to_upload = df_to_upload.apply(apply_absorption, axis=1)
+
+            # 4. [추가] 부속지번 행 삭제 절차
+            if pnu_to_remove_set:
+                print(f"   🧹 부속지번 행 삭제 시작... (삭제 대상 PNU: {len(pnu_to_remove_set)}개)")
+                initial_count = len(df_to_upload)
+                
+                # 삭제를 위해 현재 DF에도 정규화 키 생성
+                df_to_upload['temp_norm_key'] = df_to_upload['고유번호'].apply(get_normalized_pnu)
+                
+                # 정규화 키가 삭제 목록에 없는 것만 남김 (~)
+                df_to_upload = df_to_upload[~df_to_upload['temp_norm_key'].isin(pnu_to_remove_set)].copy()
+                
+                # 임시 키 컬럼 제거
+                df_to_upload.drop(columns=['temp_norm_key'], inplace=True)
+                
+                print(f"      ...삭제 완료: {initial_count}건 -> {len(df_to_upload)}건 ({initial_count - len(df_to_upload)}건 삭제됨)")
+
+        except Exception as e:
+            print(f"❌ 부속지번 흡수 및 삭제 작업 중 오류 발생: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print(f"⚠️ 경고: 부속지번 관계 파일({input_file_relation}) 없음.")
     
     try:
         engine = create_engine('postgresql+psycopg2://iseung-ug:1234@localhost:5050/postgres')
