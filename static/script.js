@@ -1,366 +1,504 @@
 let map = null;
-let markers = [], markerMap = {}, infoWindows = {};
-let globalData = {}; // 전체 데이터 저장용
+let searchMarkers = [];
+let loadedPointIds = new Set(); // 이미 로드된 포인트의 ID(주소) 저장소
+let lastFilters = "";
+let povMarker = null; // 파노라마 시야 표시용 마커
+let isRulerMode = false;
+let pano = false;
+let drawingManager = null;
+let resultOverlays = [];
+let markerClustering = null; // 클러스터러 변수 추가
 
-// 현재 선택된 임시 마커 (검색/클릭 시 생성됨)
-let currentMarker = null;
 
-window.onload = function() {
-    initMap();
-    loadWishlist(); // 초기 로딩
-};
 
-function initMap() {
-    map = new naver.maps.Map('map', {
-        center: new naver.maps.LatLng(37.5665, 126.9780),
+
+const ZOOM_THRESHOLD = 18; 
+const syncChannel = new BroadcastChannel('pano_sync'); // 파노라마 탭과 통신
+
+function initMap(x=37.5665, y=126.9780) {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
+
+    map = new naver.maps.Map(mapContainer, {
+        center: new naver.maps.LatLng(x, y),
         zoom: 15
     });
-    // 지도 클릭 시 좌표로 주소 검색
+
+    // 지도가 움직임이 멈췄을 때 데이터 로드
+    naver.maps.Event.addListener(map, 'idle', refreshMapData);
+    
+    markerClustering = new MarkerClustering({
+        minClusterSize: 2,
+        maxZoom: 19, // 이 줌 레벨보다 커지면 클러스터링 해제
+        map: map,
+        markers: searchMarkers,
+        disableClickZoom: false,
+        gridSize: 120,
+        icons: [
+            // 클러스터 아이콘 (필요시 스타일 수정 가능)
+            { content: '<div style="cursor:pointer;width:40px;height:40px;line-height:42px;font-size:12px;color:white;text-align:center;font-weight:bold;background:url(https://navermaps.github.io/maps.js.ncp/docs/img/cluster-marker-1.png);background-size:contain;"></div>', size: new naver.maps.Size(40, 40), anchor: new naver.maps.Point(20, 20) }
+        ],
+        stylingFunction: function(clusterMarker, count) {
+            clusterMarker.getElement().querySelector('div:first-child').innerText = count;
+        }
+    });
+
     naver.maps.Event.addListener(map, 'click', function(e) {
-        searchCoordinateToAddress(e.coord);
+        movePovMarker(e.coord);
     });
-}
 
-// --- 데이터 로드 및 리스트 렌더링 ---
-async function loadWishlist() {
-    const container = document.getElementById('wishlistContainer');
-    const datalist = document.getElementById('existingGroups');
-    const countBadge = document.getElementById('countBadge');
-    
-    try {
-        const res = await fetch('/api/wishlist');
-        globalData = await res.json();
-        
-        // 초기화
-        markers.forEach(m => m.setMap(null));
-        markers = []; markerMap = {}; infoWindows = {};
-        container.innerHTML = '';
-        datalist.innerHTML = '';
-
-        countBadge.innerText = Object.keys(globalData).length;
-
-        const groupedData = {};
-        const groupSet = new Set();
-
-        // 데이터 분류 및 마커 생성
-        for (const [addr, info] of Object.entries(globalData)) {
-            addMarkerToMap(addr, info); // 지도에 마커 추가
-
-            const gName = info.group_name || '기본';
-            if (!groupedData[gName]) groupedData[gName] = [];
-            groupedData[gName].push({ address: addr, ...info });
-            groupSet.add(gName);
-        }
-
-        // 그룹명 자동완성 채우기
-        groupSet.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g;
-            datalist.appendChild(opt);
-        });
-
-        // 리스트 렌더링
-        if (Object.keys(groupedData).length === 0) {
-            container.innerHTML = '<div class="text-center text-gray-400 mt-10">저장된 데이터가 없습니다.</div>';
-            return;
-        }
-
-        Object.keys(groupedData).sort().forEach(groupName => {
-            const items = groupedData[groupName];
-            
-            const details = document.createElement('details');
-            details.open = true; 
-            details.className = "group bg-white border rounded-lg overflow-hidden mb-2 shadow-sm";
-
-            const summary = document.createElement('summary');
-            summary.className = "flex justify-between items-center p-3 bg-slate-50 hover:bg-slate-100 text-sm font-bold text-slate-700 select-none";
-            summary.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="fa-solid fa-folder text-yellow-500"></i> ${groupName}
-                </div>
-                <span class="text-xs bg-white border px-1.5 rounded text-gray-500">${items.length}</span>
-            `;
-
-            const listDiv = document.createElement('div');
-            items.forEach(item => {
-                listDiv.appendChild(createListItem(item));
-            });
-
-            details.appendChild(summary);
-            details.appendChild(listDiv);
-            container.appendChild(details);
-        });
-
-    } catch (e) { console.error(e); }
-}
-
-// --- 리스트 아이템 생성 ---
-function createListItem(item) {
-    const el = document.createElement('div');
-    const safeId = `item-${btoa(unescape(encodeURIComponent(item.address))).replace(/=/g,'')}`;
-    
-    el.id = safeId;
-    el.className = "p-3 border-b last:border-0 hover:bg-blue-50 transition relative group/item";
-
-    el.innerHTML = `
-        <div class="flex justify-between items-start cursor-pointer" onclick="moveToLocation('${item.address}')">
-            <div class="flex gap-2 items-start overflow-hidden w-full">
-                <div class="w-3 h-3 rounded-full mt-1 flex-shrink-0" style="background-color: ${item.color};"></div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-gray-800 leading-tight break-keep">${item.address}</p>
-                    ${item.note ? `<p class="text-xs text-gray-500 mt-1 bg-gray-100 p-1 rounded inline-block"><i class="fa-regular fa-note-sticky"></i> ${item.note}</p>` : ''}
-                </div>
-            </div>
-        </div>
-        
-        <div class="flex gap-2 absolute top-2 right-2 opacity-0 group-hover/item:opacity-100 transition-opacity bg-white/90 px-1 rounded shadow-sm">
-            <button onclick="enableEdit('${item.address}', '${safeId}')" class="text-blue-500 hover:text-blue-700 text-xs p-1" title="수정">
-                <i class="fa-solid fa-pen"></i>
-            </button>
-            <button onclick="deleteItem(event, '${item.address}')" class="text-red-400 hover:text-red-600 text-xs p-1" title="삭제">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>
-    `;
-    return el;
-}
-
-// --- 수정 모드 UI ---
-window.enableEdit = (address, elementId) => {
-    const info = globalData[address];
-    const el = document.getElementById(elementId);
-    if (!el) return;
-
-    el.innerHTML = `
-        <div class="bg-blue-50 p-2 -m-2 rounded ring-2 ring-blue-100">
-            <p class="text-xs font-bold text-gray-500 mb-2">${address}</p>
-            
-            <div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-bold w-8 text-gray-600">그룹</span>
-                <input type="text" id="edit-group-${elementId}" list="existingGroups" value="${info.group_name}" 
-                       class="flex-1 text-xs border rounded px-2 py-1 focus:border-blue-500 outline-none">
-            </div>
-
-            <div class="flex items-center gap-2 mb-2">
-                <span class="text-xs font-bold w-8 text-gray-600">색상</span>
-                <input type="color" id="edit-color-${elementId}" value="${info.color}" class="h-6 w-6 border-none bg-transparent p-0 cursor-pointer">
-            </div>
-
-            <textarea id="edit-note-${elementId}" class="w-full text-xs border rounded px-2 py-1 mb-2 resize-none focus:border-blue-500 outline-none" 
-                      rows="2" placeholder="메모">${info.note}</textarea>
-
-            <div class="flex gap-2 justify-end">
-                <button onclick="loadWishlist()" class="px-3 py-1 text-xs bg-gray-300 hover:bg-gray-400 rounded text-white">취소</button>
-                <button onclick="saveEdit('${address}', '${elementId}')" class="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 rounded text-white font-bold shadow-sm">저장</button>
-            </div>
-        </div>
-    `;
-};
-
-// --- 수정 저장 ---
-window.saveEdit = async (address, elementId) => {
-    const newGroup = document.getElementById(`edit-group-${elementId}`).value;
-    const newColor = document.getElementById(`edit-color-${elementId}`).value;
-    const newNote = document.getElementById(`edit-note-${elementId}`).value;
-
-    try {
-        await fetch('/api/wishlist', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                address: address, 
-                color: newColor, 
-                group_name: newGroup, 
-                note: newNote 
-            })
-        });
-        loadWishlist(); 
-    } catch(e) { alert("저장 실패"); }
-};
-
-// --- 신규 저장 (좌측 패널) ---
-async function saveCurrentLocation() {
-    const address = document.getElementById('currentAddress').innerText;
-    if (!address) return;
-
-    const group = document.getElementById('markGroupName').value;
-    const color = document.getElementById('markColorPicker').value;
-    const note = document.getElementById('markNote').value;
-
-    try {
-        await fetch('/api/wishlist', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ address, group_name: group, color, note })
-        });
-        
-        alert("저장되었습니다.");
-        document.getElementById('selectedInfo').classList.add('hidden');
-        if(currentMarker) currentMarker.setMap(null); // 임시 마커 제거
-        loadWishlist(); // 리스트 갱신
-    } catch (e) { alert("저장 실패"); }
-}
-
-// --- 삭제 기능 ---
-window.deleteItem = async (e, address) => {
-    e.stopPropagation();
-    if (!confirm("정말 삭제하시겠습니까?")) return;
-    
-    try {
-        await fetch('/api/wishlist', {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ address })
-        });
-        loadWishlist();
-    } catch(e) { alert("삭제 오류"); }
-};
-
-// --- [핵심] 지도 마커 생성 함수 (정보창에 로드뷰 버튼 포함) ---
-function addMarkerToMap(address, info) {
-    naver.maps.Service.geocode({ query: address }, function(status, response) {
-        if (status === naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
-            const item = response.v2.addresses[0];
-            const latlng = new naver.maps.LatLng(item.y, item.x);
-
-            const marker = new naver.maps.Marker({
-                position: latlng, map: map,
-                icon: {
-                    content: `<div style="background:${info.color}; width:20px; height:20px; border-radius:50%; border:2px solid white; box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>`
-                }
-            });
-
-            // 정보창 컨텐츠 (로드뷰 버튼 포함)
-            const infoWindow = new naver.maps.InfoWindow({
-                content: `
-                    <div style="padding:10px; min-width:180px;">
-                        <div style="font-size:11px; color:#888;">${info.group_name}</div>
-                        <div style="font-weight:bold; font-size:13px; margin-bottom:5px;">${address}</div>
-                        ${info.note ? `<div style="background:#f3f4f6; padding:4px; border-radius:4px; font-size:11px; margin-bottom:5px;">${info.note}</div>` : ''}
-                        
-                        <button onclick="openRoadView(${item.y}, ${item.x}, '${address}')" 
-                                class="w-full bg-blue-500 hover:bg-blue-600 text-white text-xs py-1.5 rounded font-bold transition flex items-center justify-center gap-1">
-                            <i class="fa-solid fa-street-view"></i> 로드뷰 보기
-                        </button>
-                    </div>`,
-                backgroundColor: "white",
-                borderColor: "#ccc",
-                borderWidth: 1,
-                anchorSize: new naver.maps.Size(10, 10)
-            });
-
-            naver.maps.Event.addListener(marker, 'click', () => {
-                if (infoWindow.getMap()) infoWindow.close();
-                else infoWindow.open(map, marker);
-            });
-
-            markers.push(marker);
-            markerMap[address] = marker;
-            infoWindows[address] = infoWindow;
-        }
-    });
-}
-
-// --- [추가] 새 탭에서 로드뷰 열기 함수 (좌표 기반) ---
-window.openRoadView = function(lat, lng, address) {
-    // 쿼리 파라미터로 좌표와 주소를 전달하여 새 탭 열기
-    const url = `/panorama?lat=${lat}&lng=${lng}&addr=${encodeURIComponent(address)}`;
-    window.open(url, '_blank'); 
-};
-
-function moveToLocation(address) {
-    const marker = markerMap[address];
-    if (marker) {
-        map.panTo(marker.getPosition());
-        map.setZoom(17, true);
-        infoWindows[address].open(map, marker);
+    if (naver.maps.drawing) {
+        setupDrawing();
     } else {
-        alert("지도에 표시되지 않는 위치입니다.");
+        naver.maps.onJSContentLoaded = function() {
+            setupDrawing();
+        };
     }
+    
+}
+function setupDrawing() {
+    drawingManager = new naver.maps.drawing.DrawingManager({
+        map: map,
+        drawingControl: [],
+        polylineOptions: {
+            strokeColor: '#ff4d4d',
+            strokeWeight: 4
+        }
+    });
+
+    // 1. 선이 추가될 때 (더블클릭/우클릭 종료)
+    drawingManager.addListener('polylineAdded', function(overlay) {
+        const path = overlay.getPath();
+        const infoWindow = calculateAndShowDistance(path);
+
+        // ★ 중요: 선 객체에 생성된 정보창을 몰래 숨겨둡니다 (나중에 찾아서 지우려고)
+        overlay.myInfoWindow = infoWindow; 
+        
+        resultOverlays.push(overlay);
+        stopRuler();
+    });
+
+    // 2. ★ 우클릭 메뉴로 선을 삭제할 때 발생하는 이벤트
+    drawingManager.addListener('polylineRemoved', function(overlay) {
+        console.log("우클릭으로 선 삭제됨");
+
+        // 아까 숨겨뒀던 정보창을 찾아서 지도에서 지웁니다.
+        if (overlay.myInfoWindow) {
+            overlay.myInfoWindow.setMap(null);
+        }
+
+        // 관리 배열에서도 해당 선을 제거합니다.
+        resultOverlays = resultOverlays.filter(item => item !== overlay);
+    });
+}
+
+/**
+ * 3. 거리 계산 및 결과 표시 (InfoWindow)
+ */
+function calculateAndShowDistance(path) {
+    if (!path || path.getLength() < 2) return null;
+
+    let totalDistance = 0;
+    for (let i = 0; i < path.getLength() - 1; i++) {
+        totalDistance += map.getProjection().getDistance(path.getAt(i), path.getAt(i + 1));
+    }
+
+    const distanceStr = totalDistance >= 1000 
+        ? (totalDistance / 1000).toFixed(2) + " km" 
+        : Math.round(totalDistance) + " m";
+
+    // 결과창(InfoWindow) 생성
+    const infoWindow = new naver.maps.InfoWindow({
+        content: `<div style="padding:5px 10px; background:#ff4d4d; color:white; border-radius:20px; font-size:12px; font-weight:bold; border:2px solid white; box-shadow:0 2px 4px rgba(0,0,0,0.2);">총 거리: ${distanceStr}</div>`,
+        borderWidth: 0,
+        disableAnchor: true,
+        backgroundColor: 'transparent',
+        pixelOffset: new naver.maps.Point(0, -15)
+    });
+
+    const lastCoord = path.getAt(path.getLength() - 1);
+    infoWindow.open(map, lastCoord);
+
+    return infoWindow; // 생성된 객체 반환
+}
+
+/**
+ * 4. 제어 및 삭제 함수
+ */
+function toggleRuler() {
+    if (!drawingManager) return;
+    isRulerMode = !isRulerMode;
+    const btn = document.getElementById('ruler-btn');
+
+    if (isRulerMode) {
+        if (povMarker) povMarker.setMap(null);
+
+        drawingManager.set('drawingMode', naver.maps.drawing.DrawingMode.POLYLINE);
+        if (btn) btn.classList.add('bg-red-100', 'text-red-600');
+        map.setCursor('crosshair');
+    } else {
+        stopRuler();
+    }
+}
+
+function stopRuler() {
+    isRulerMode = false;
+    if (drawingManager) drawingManager.set('drawingMode', naver.maps.drawing.DrawingMode.HAND);
+
+    if (povMarker) povMarker.setMap(map);
+    const btn = document.getElementById('ruler-btn');
+    if (btn) btn.classList.remove('bg-red-100', 'text-red-600');
+    map.setCursor('grab');
+
+    
+}
+
+// ★ 전체 삭제 기능: 이 함수를 호출하면 선과 거리 정보창이 모두 사라집니다.
+function clearRuler() {
+    if (resultOverlays.length === 0) return;
+
+    resultOverlays.forEach(item => {
+        // A. DrawingManager에서 관리하는 도형인 경우 (id나 name 속성이 있음)
+        if (drawingManager && (item.id || item.name)) {
+            drawingManager.removeDrawing(item);
+        }
+        
+        // B. 지도에서 직접 제거 (InfoWindow 및 Polyline 공통)
+        if (item.setMap) {
+            item.setMap(null); 
+        }
+    });
+
+    // 바구니 비우기
+    resultOverlays = []; 
+    console.log("모든 측정 데이터가 삭제되었습니다.");
+}
+
+/**
+ * 2. 마커 가시성 제어 함수
+ * @param {boolean} visible - 표시 여부
+ */
+function updateMarkersVisibility(visible) {
+    const targetMap = visible ? map : null;
+    searchMarkers.forEach(marker => {
+        // 현재 상태와 다를 때만 맵 연결 상태 변경 (성능 최적화)
+        if (marker.getMap() !== targetMap) {
+            marker.setMap(targetMap);
+        }
+    });
+}
+
+/**
+ * 3. 마커 렌더링 함수 (누적 방식)
+ */
+function renderMarkers(points) {
+    points.forEach(pt => {
+        // ID 캐시에 추가하여 중복 방지
+        loadedPointIds.add(pt.addr);
+
+        const marker = new naver.maps.Marker({
+            position: new naver.maps.LatLng(pt.y, pt.x),
+            
+            icon: {
+                content: `<div style="background:#3b82f6; opacity: 0.82; width:24px; height:24px; border-radius:50%; border:0.2px solid white; box-shadow:0px 3px 1px rgba(0,0,0,0.2);"></div>`,
+                anchor: new naver.maps.Point(12, 12)
+            }
+        });
+
+        const infoWindow = new naver.maps.InfoWindow({
+            content: `<div style="padding:10px; min-width:140px;">
+                <p style="font-weight:bold; font-size:12px; margin-bottom:5px;">
+                    <a href="https://map.naver.com/p/search/${pt.addr}" target="_blank" style="text-decoration:none; color:#2563eb;">
+                        ${pt.addr} <i class="fa-solid fa-up-right-from-square" style="font-size:10px;"></i>
+                    </a>
+                </p>
+            </div>`
+        });
+
+        naver.maps.Event.addListener(marker, 'click', () => { infoWindow.open(map, marker); });
+        
+        // 전체 마커 관리 배열에 추가
+        searchMarkers.push(marker);
+    });
+
+    // [중요] 마커 배열이 업데이트되었음을 클러스터러에 통보
+    if (markerClustering) {
+        markerClustering.setMarkers(searchMarkers);
+    }
+}
+
+const MARKER_SIZE = 33; 
+const MARKER_ICON_CLASS = 'text-4xl'; // 2xl -> 4xl로 키움
+
+/**
+ * 4. 마커 전체 삭제 (필터 변경 시에만 호출)
+ */
+function clearMarkers() {
+    searchMarkers.forEach(m => m.setMap(null));
+    searchMarkers = [];
+    loadedPointIds.clear(); // 로드된 ID 기록도 모두 삭제
+
+    // [중요] 클러스터러에서도 마커 제거
+    if (markerClustering) {
+        markerClustering.setMarkers([]);
+    }
+}
+
+
+function movePovMarker(pos) {
+    if (!povMarker) {
+        povMarker = new naver.maps.Marker({
+            position: pos,
+            map: map,
+            draggable: true, // ★ 꾹 눌러서 이동 가능하도록 설정
+            icon: {
+                content: `<div id="pov-arrow" style="transition: transform 0.1s;"><i class="fa-solid fa-location-arrow text-red-500 ${MARKER_ICON_CLASS}"></i></div>`,
+                // 크기의 절반을 계산해서 자동으로 중앙 배치
+                anchor: new naver.maps.Point(MARKER_SIZE / 2, MARKER_SIZE / 2)
+            },
+            zIndex: 100
+        });
+
+        // 드래그가 끝났을 때 파노라마 위치 업데이트
+        naver.maps.Event.addListener(povMarker, 'dragend', function(e) {
+            if (pano && document.getElementById('pano-wrapper').style.display === 'block') {
+                pano.setPosition(e.coord);
+            }
+        });
+    } else {
+        povMarker.setPosition(pos);
+    }
+}
+
+// 3. 우측 패널 버튼 클릭 시 실행될 함수
+function triggerPanoAtMarker() {
+    if (!povMarker) {
+        alert("지도 위를 클릭하여 로드뷰를 볼 위치를 선택해주세요.");
+        return;
+    }
+    const currentPos = povMarker.getPosition();
+    openPano(currentPos.lat(), currentPos.lng());
+}
+
+// script.js 하단 또는 적절한 위치
+syncChannel.onmessage = function(event) {
+    const { type, lat, lng } = event.data;
+
+    if (type === 'MOVE_TO_FIRST_RESULT') {
+        // 1. 좌표 생성
+        const moveLatLn = new naver.maps.LatLng(lat, lng);
+        
+        // 2. 지도 중심 이동
+        map.setCenter(moveLatLn);
+        
+        // 3. 줌 레벨을 상세 수준으로 변경
+        map.setZoom(17);
+        
+        // 4. (옵션) 해당 위치에 파노라마(로드뷰) 마커 배치 준비
+        if (typeof movePovMarker === 'function') {
+            movePovMarker(moveLatLn);
+        }
+    }
+};
+
+async function refreshMapData() {
+    const currentFilters = localStorage.getItem('mapFilters') || '{}';
+    
+    // [변경] 필터가 바뀌었을 때만 메모리를 완전히 비움
+    if (lastFilters !== currentFilters) {
+        clearMarkers();
+        lastFilters = currentFilters;
+    }
+
+    // [변경] 줌 레벨에 따른 가시성 제어 (삭제하지 않고 숨김/표시만 전환)
+    const isVisible = map.getZoom() >= ZOOM_THRESHOLD;
+    
+
+    // 줌 레벨이 낮으면 추가 데이터를 요청하지 않고 중단
+    if (!isVisible) return;
+
+    // 데이터 요청용 바운드 계산
+    const bounds = map.getBounds();
+    const filterData = JSON.parse(currentFilters);
+    const requestBody = {
+        ...filterData,
+        bounds: {
+            minX: bounds.getSW().lng(), maxX: bounds.getNE().lng(),
+            minY: bounds.getSW().lat(), maxY: bounds.getNE().lat()
+        }
+    };
+
+    try {
+        const res = await fetch('/api/get_map_data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+        const points = await res.json();
+
+        // [변경] 이미 로드된 데이터(ID)는 제외하고 새로운 데이터만 선별
+        const newPoints = points.filter(pt => !loadedPointIds.has(pt.addr));
+        
+        if (newPoints.length > 0) {
+            renderMarkers(newPoints);
+        }
+    } catch (e) { console.error("데이터 로딩 중 오류:", e); }
+}
+
+// 파노라마 시야 아이콘 업데이트
+function updatePovIcon(type, lat, lng, pan) {
+    if (!povMarker) {
+        povMarker = new naver.maps.Marker({
+            position: new naver.maps.LatLng(lat, lng),
+            map: map,
+            icon: {
+                content: `<i class="fa-solid fa-location-arrow text-red-500 ${MARKER_ICON_CLASS}" id="pov-icon"></i>`,
+                anchor: new naver.maps.Point(MARKER_SIZE / 2, MARKER_SIZE / 2)
+            }
+        });
+    }
+    if (type === 'pos') povMarker.setPosition(new naver.maps.LatLng(lat, lng));
+    if (type === 'pov') document.getElementById('pov-icon').style.transform = `rotate(${pan - 45}deg)`;
 }
 
 function searchAddress() {
     const query = document.getElementById('searchInput').value;
-    if (!query) return;
-    naver.maps.Service.geocode({ query: query }, function(status, response) {
-        if (status !== naver.maps.Service.Status.OK || response.v2.addresses.length === 0) {
-            return alert('주소를 찾을 수 없습니다.');
-        }
-        const item = response.v2.addresses[0];
-        const point = new naver.maps.LatLng(item.y, item.x);
-        
-        map.setCenter(point);
-        map.setZoom(17);
-        setTempMarker(point, item.roadAddress || item.jibunAddress);
-    });
-}
-
-function searchCoordinateToAddress(latlng) {
-    naver.maps.Service.reverseGeocode({
-        coords: latlng,
-        orders: [naver.maps.Service.OrderType.ADDR, naver.maps.Service.OrderType.ROAD_ADDR].join(',')
-    }, function(status, response) {
-        if (status === naver.maps.Service.Status.OK) {
-            const items = response.v2.results;
-            if (items.length > 0) {
-                let address = items[0].region.area1.name + " " + items[0].region.area2.name + " " + items[0].region.area3.name;
-                if (items[0].land) address += " " + items[0].land.number1 + (items[0].land.number2 ? "-" + items[0].land.number2 : "");
-                setTempMarker(latlng, address);
-            }
+    naver.maps.Service.geocode({ query }, (status, res) => {
+        if (status === naver.maps.Service.Status.OK && res.v2.addresses.length > 0) {
+            const item = res.v2.addresses[0];
+            map.setCenter(new naver.maps.LatLng(item.y, item.x));
+            map.setZoom(17);
         }
     });
 }
 
-function setTempMarker(latlng, address) {
-    if (currentMarker) currentMarker.setMap(null);
-    currentMarker = new naver.maps.Marker({
-        position: latlng, map: map,
-        animation: naver.maps.Animation.BOUNCE
-    });
-    document.getElementById('currentAddress').innerText = address;
-    document.getElementById('selectedInfo').classList.remove('hidden');
+
+function openPano(lat, lng) {
+    const wrapper = document.getElementById('pano-wrapper');
+    wrapper.style.display = 'block'; // 1. 먼저 보이게 설정
     
-    // 저장 폼 초기화
-    document.getElementById('markNote').value = '';
-    document.getElementById('markGroupName').value = '관심물건';
+    const pos = new naver.maps.LatLng(lat, lng);
+
+    if (!pano) {
+        // 처음 생성 시
+        pano = new naver.maps.Panorama("pano-view", {
+            position: pos,
+            aroundControl: true, // ★ 필수: 클릭 이동 및 경로 표시 활성화
+            aroundControlOptions: {
+                position: naver.maps.Position.TOP_LEFT
+            }
+        });
+
+        // 클릭 이벤트 등록
+        naver.maps.Event.addListener(pano, 'click', (e) => {
+            console.log("Panorama Clicked:", e.coord); // 로그 확인용
+            if (e.coord) {
+                pano.setPosition(e.coord);
+            }
+        });
+
+        // 시야(POV) 변화
+        naver.maps.Event.addListener(pano, 'pov_changed', () => {
+            const pan = pano.getPov().pan;
+            const icon = document.getElementById('pov-arrow');
+            if (icon) icon.style.transform = `rotate(${pan - 45}deg)`;
+        });
+
+        // 위치 변화
+        naver.maps.Event.addListener(pano, 'position_changed', () => {
+            const newPos = pano.getPosition();
+            if (povMarker) povMarker.setPosition(newPos);
+        });
+
+    } else {
+        // 이미 생성된 경우 위치만 이동
+        pano.setPosition(pos);
+    }
+
+    // 2. 중요: 숨겨져 있다가 나타날 때 API에 크기 변화를 알려줘야 클릭 좌표가 정확해집니다.
+    setTimeout(() => {
+        const width = wrapper.offsetWidth;
+        const height = wrapper.offsetHeight;
+        pano.setSize(new naver.maps.Size(width, height));
+        pano.setVisible(true); // 명시적으로 가시화
+    }, 100);
+
+    updatePovMarker(pos);
 }
 
-function toggleSidebar() {
-    const panel = document.getElementById('sidePanel');
-    const icon = document.getElementById('toggleIcon');
-    if (panel.classList.contains('translate-x-0')) {
-        panel.classList.remove('translate-x-0');
-        panel.classList.add('translate-x-full');
-        icon.className = 'fa-solid fa-chevron-left';
+// 4. 지도 위 시야 아이콘 생성/업데이트
+function updatePovMarker(pos) {
+    if (!povMarker) {
+        povMarker = new naver.maps.Marker({
+            position: pos,
+            map: map,
+            icon: {
+                content: `<div id="pov-arrow" style="transition: transform 0.1s;"><i class="fa-solid fa-location-arrow text-red-500 text-2xl"></i></div>`,
+                anchor: new naver.maps.Point(12, 12)
+            },
+            zIndex: 100
+        });
     } else {
-        panel.classList.remove('translate-x-full');
-        panel.classList.add('translate-x-0');
-        icon.className = 'fa-solid fa-chevron-right';
+        povMarker.setMap(map);
+        povMarker.setPosition(pos);
     }
 }
 
-// --- [수정] 선택된 위치 패널의 로드뷰 버튼 동작 ---
-function openCurrentRoadView() {
-    const address = document.getElementById('currentAddress').innerText;
-    if (!address) {
-        alert("선택된 주소가 없습니다.");
+// 5. 파노라마 UI 제어 (확대/축소/닫기)
+function togglePanoSize() {
+    const wrapper = document.getElementById('pano-wrapper');
+    const icon = document.getElementById('expand-icon');
+    wrapper.classList.toggle('expanded');
+    icon.className = wrapper.classList.contains('expanded') ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+    setTimeout(() => { 
+        const newWidth = wrapper.offsetWidth;
+        const newHeight = wrapper.offsetHeight;
+        pano.setSize(new naver.maps.Size(newWidth, newHeight)) }, 300); // 파노라마 리사이즈 강제 실행
+        console.log("리사이즈")
+        
+}
+
+function closePano() {
+    document.getElementById('pano-wrapper').style.display = 'none';
+    // if (povMarker) povMarker.setMap(null);
+}
+
+// 거리 계산 함수
+function calculateDistance(path) {
+    let totalDistance = 0;
+    for (let i = 0; i < path.getLength() - 1; i++) {
+        const p1 = path.getAt(i);
+        const p2 = path.getAt(i + 1);
+        totalDistance += map.getProjection().getDistance(p1, p2);
+    }
+    return totalDistance;
+}
+
+
+
+/**
+ * 지정된 좌표로 지도를 이동시키고 마커를 표시하는 공통 함수
+ * @param {number} lat - 위도 (y)
+ * @param {number} lng - 경도 (x)
+ */
+function moveToLocation(lat, lng) {
+    // 1. 지도 객체가 있는지 확인 (에러 방지)
+    if (!map) {
+        console.error("지도 객체(map)가 초기화되지 않았습니다.");
         return;
     }
 
-    // 1. 현재 지도에 찍힌 임시 마커가 있다면 그 좌표 사용 (가장 정확)
-    if (currentMarker) {
-        const pos = currentMarker.getPosition();
-        openRoadView(pos.y, pos.x, address);
-    } 
-    // 2. 예외 처리: 텍스트는 있는데 마커가 없는 경우 (다시 검색)
-    else {
-        naver.maps.Service.geocode({ query: address }, function(status, response) {
-            if (status === naver.maps.Service.Status.OK && response.v2.addresses.length > 0) {
-                const item = response.v2.addresses[0];
-                openRoadView(item.y, item.x, address);
-            } else {
-                alert("위치 좌표를 찾을 수 없습니다.");
-            }
-        });
+    const newPos = new naver.maps.LatLng(lat, lng);
+
+    // 2. 중심 이동 및 줌 설정
+    map.setCenter(newPos);
+    map.setZoom(17);
+
+    // 3. 시야 마커(빨간 화살표) 이동 (함수 존재 여부 체크)
+    if (typeof movePovMarker === 'function') {
+        movePovMarker(newPos);
     }
 }
+
+
+

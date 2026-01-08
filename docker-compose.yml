@@ -2,6 +2,7 @@ services:
   flask-web:
     build: .
     container_name: budongsan-data-flask
+    command: gunicorn --worker-class gevent --workers 4 --bind 0.0.0.0:7070 --timeout 120 app:app
     ports:
       - "7070:7070"
     restart: always
@@ -15,7 +16,7 @@ services:
 
   # 2. PostgreSQL 데이터베이스 서비스
   postgres-db:
-    image: postgres:15-alpine           # 공식 PostgreSQL 이미지 사용
+    image: postgis/postgis:15-3.4-alpine           # 공식 PostgreSQL 이미지 사용
     container_name: budongsan-data-db
     ports:
       - "5050:5432"
@@ -31,6 +32,7 @@ services:
     volumes:
       # 💡 DB 데이터 영구 저장을 위한 볼륨 설정
       - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   postgres_data:

@@ -1,429 +1,564 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>빌탐정</title>
+    <script type="text/javascript"
+        src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ client_id }}&submodules=geocoder,panorama,drawing"></script>
+    <script type="text/javascript" src="https://navermaps.github.io/maps.js.ncp/docs/js/MarkerClustering.js"></script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
-        /* 기본 설정 */
-        body { font-family: 'Malgun Gothic', 'Dotum', sans-serif; font-size: 12px; color: #333; background-color: #f3f4f6; }
-        
-        /* Handsontable 높이 자동 조절 - 검색창이 줄어들었으므로 높이 계산 수정 */
-        #spreadsheet-container { width: 100%; height: calc(100vh - 220px); overflow: hidden; background: #fff; }
-        
-        /* 스크롤바 커스텀 */
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* 아코디언 스타일 */
-        details > summary { list-style: none; cursor: pointer; user-select: none; }
-        details > summary::-webkit-details-marker { display: none; }
-        details[open] > summary i.arrow-icon { transform: rotate(180deg); }
-        details > summary i.arrow-icon { transition: transform 0.2s; }
-
-        /* 마킹 버튼 */
-        .star-btn { display: none; position: absolute; right: 4px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10; }
-        .handsontable td:hover .star-btn { display: block; }
-        .star-btn.active { display: block; color: #f59e0b; }
-
-        /* 드롭다운 */
-        .dropdown-list {
-            position: absolute; top: 100%; left: 0; min-width: 120px;
-            max-height: 150px; overflow-y: auto; background: white; border: 1px solid #ccc;
-            z-index: 50; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .dropdown-item { padding: 6px 10px; cursor: pointer; }
-        .dropdown-item:hover { background-color: #f3f4f6; }
-
-        /* 태그 애니메이션 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .tag-item { animation: fadeIn 0.2s ease-out; }
-
-        /* --- [New Style] 검색스타일_1번 CSS 통합 --- */
-        .input-wrapper {
+        body {
+            font-family: 'Malgun Gothic', 'Dotum', sans-serif;
+            font-size: 12px;
+            color: #333;
+            background-color: #f8fafc;
             display: flex;
-            align-items: center;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
-            background-color: #fff;
+            flex-direction: column;
+            height: 100vh;
             overflow: hidden;
-            transition: all 0.2s;
-            height: 30px; /* 기존 UI에 맞춰 높이 약간 조정 */
         }
 
-        .input-wrapper:focus-within {
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
-        }
-
-        /* 공통 인풋 스타일 */
-        .clean-input {
-            border: none;
-            outline: none;
-            padding: 0 8px;
-            font-size: 12px;
-            color: #374151;
-            width: 100%;
-            height: 100%;
-            text-align: right; /* 숫자/날짜 우측 정렬 */
-            background: transparent;
-        }
-        
-        /* 날짜 입력 필드 전용 */
-        .date-input {
-            font-family: monospace;
-            letter-spacing: 0.5px;
-            text-align: center;
-        }
-
-        .arrow-btn {
-            width: 30px;
-            height: 100%;
-            border: none;
-            border-left: 1px solid #e5e7eb;
-            background-color: #f9fafb;
-            cursor: pointer;
+        .main-wrapper {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #9ca3af;
-            transition: background 0.2s;
-            font-size: 11px;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
         }
 
-        .arrow-btn:hover {
-            background-color: #f3f4f6;
-            color: #4b5563;
+        #filter-sidebar {
+            width: 420px;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            z-index: 30;
+            transition: margin-left 0.3s ease;
         }
 
-        .arrow-btn.up i { color: #ef4444; }   /* Up: Red (이상/이후) */
-        .arrow-btn.down i { color: #3b82f6; } /* Down: Blue (이하/이전) */
+        #filter-sidebar.collapsed {
+            margin-left: -420px;
+        }
 
-        .label {
+        #sidebar-toggle {
+            position: absolute;
+            /* 또는 고정하려면 fixed */
+            left: 420px;
+            top: 50%;
+            transform: translateY(-50%);
+
+            /* 레이어 우선순위 해결: 테이블(Handsontable)보다 무조건 위에 오도록 설정 */
+            z-index: 9999 !important;
+
+            background: rgb(81, 100, 206);
+            border: 1px solid #e2e8f0;
+            border-left: none;
+            padding: 10px 4px;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s ease;
+        }
+
+        /* 사이드바가 접혔을 때 버튼 위치 */
+        #filter-sidebar.collapsed+#sidebar-toggle {
+            left: 0;
+        }
+
+        /* 탭 버튼 스타일 */
+        .view-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            gap: 4px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            text-align: center;
             font-size: 12px;
-            font-weight: 700;
-            color: #4b5563;
-            margin-right: 6px;
-            white-space: nowrap;
-        }
-        
-        /* 섹션 헤더 스타일 */
-        .section-mini-header {
-            font-size: 11px;
             font-weight: bold;
-            color: #6b7280;
-            margin-right: 8px;
+            color: #64748b;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #2563eb;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        #content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* 테이블 및 지도 뷰 영역 */
+        #spreadsheet-view,
+        #map-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .view-hidden {
+            display: none !important;
+        }
+
+        #map-section {
+            flex: 1;
+            position: relative;
+        }
+
+        /* 필터 행 정렬 */
+        .filter-row {
+            display: grid;
+            grid-template-columns: 100px 1fr;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 0;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: #4b5563;
+        }
+
+        .range-input {
+            width: 100%;
+            height: 30px;
+            border: 1px solid #9ca3af !important;
+            border-radius: 4px;
+            padding: 0 8px;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .range-wrapper {
             display: flex;
             align-items: center;
             gap: 4px;
         }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            border: 1px solid #9ca3af !important;
+            border-radius: 4px;
+            height: 30px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .clean-input {
+            border: none !important;
+            outline: none !important;
+            padding: 0 8px;
+            font-size: 11px;
+            width: 100%;
+            text-align: right;
+        }
+
+        .tag-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+            padding-left: 100px;
+        }
+
+        /* 미니 파노라마 스타일 */
+        #pano-wrapper {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 320px; height: 210px;
+            z-index: 50; background: white;
+            border-radius: 12px; border: 2px solid white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+             display: none; /* 초기 숨김 */
+            transition: all 0.3s ease;
+        }
+        /* 확대 모드 */
+        #pano-wrapper.expanded { width: 100%; height: 100%; bottom: 50%; right: 50%; transform: translate(50%, 50%); }
+        #pano-view { width: 100%; height: 100%; }
+
+        .pano-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 60; }
+        .pano-btn { width: 30px; height: 30px; background: rgba(0,0,0,0.6); color: white; border-radius: 6px; 
+                   display: flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        .star-btn {
+            display: none;
+            position: absolute;
+            right: 4px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+
+        .handsontable td:hover .star-btn {
+            display: block;
+        }
     </style>
 </head>
+
 <body class="flex flex-col h-screen overflow-hidden">
 
+    <!-- 헤더영역 -->
     <div class="bg-white border-b px-3 py-1.5 flex justify-between items-center shadow-sm z-20 h-[40px]">
         <div class="flex items-center gap-2">
             <i class="fa-solid fa-building text-blue-600"></i>
             <span class="font-black text-base tracking-tight">빌<span class="text-blue-600">탐정</span></span>
         </div>
+
         <div class="flex gap-1.5">
-            <input type="text" id="mainSearchInput" class="border rounded px-2 py-0.5 text-xs w-52 focus:outline-blue-500" placeholder="통합 검색 (주소, 건물명)">
-            <button id="btnMainSearch" class="bg-blue-600 text-white px-2.5 py-0.5 rounded text-xs hover:bg-blue-700 transition"><i class="fa-solid fa-magnifying-glass"></i> 검색</button>
-            <button id="btnResetAll" class="bg-white border border-gray-300 text-gray-600 px-2.5 py-0.5 rounded text-xs hover:bg-gray-50 transition"><i class="fa-solid fa-rotate-right"></i> 초기화</button>
-            <button id="btnToggleUnit" class="bg-amber-500 text-white px-2.5 py-0.5 rounded text-xs hover:bg-amber-600 transition flex items-center gap-1">
-        <i class="fa-solid fa-ruler-combined"></i> <span id="unitText">평</span>
-    </button>
+            <input type="text" id="mainSearchInput"
+                class="border rounded px-2 py-0.5 text-xs w-52 focus:outline-blue-500" placeholder="통합 검색">
+            <button id="btnMainSearch"
+                class="bg-blue-600 text-white px-2.5 py-0.5 rounded text-xs hover:bg-blue-700 transition"><i
+                    class="fa-solid fa-magnifying-glass"></i></button>
+            <button id="btnResetAll"
+                class="bg-white border border-gray-300 text-gray-600 px-2.5 py-0.5 rounded text-xs hover:bg-gray-50 transition"><i
+                    class="fa-solid fa-rotate-right"></i></button>
+            <button id="btnToggleUnit"
+                class="bg-amber-500 text-white px-2.5 py-0.5 rounded text-xs hover:bg-amber-600 transition flex items-center gap-1">
+                <i class="fa-solid fa-ruler-combined"></i> <span id="unitText">평</span>
+            </button>
         </div>
 
-</div>
     </div>
+    <!-- 헤더영역 -->
 
-    <div class="flex-none bg-white border-b z-10" style="max-height: 45vh; overflow-y: auto;">
-        
-        <details class="group bg-white w-full" open>
-            <summary class="px-3 py-2 bg-gray-50 hover:bg-gray-100 border-b flex justify-between items-center sticky top-0 z-20">
-                <div class="flex items-center gap-2">
-                    <span class="font-bold text-gray-700 flex items-center gap-1.5 text-xs">
-                        <i class="fa-solid fa-filter text-blue-500"></i> 검색 필터 및 설정
-                    </span>
-                    <i class="fa-solid fa-chevron-down arrow-icon text-gray-400 text-[10px]"></i>
+    <!-- 메인 레퍼 -->
+    <div class="main-wrapper">
+        <div class="main-wrapper relative">
+            <aside id="filter-sidebar">
+                <div class="p-4 border-b bg-gray-50 sticky top-0 z-30 flex justify-between items-center">
+                    <h3 class="font-bold text-sm text-gray-800"><i class="fa-solid fa-filter text-blue-600 mr-1"></i> 
+                    </h3>
+                    <button id="btnSaveData" disabled onclick="event.stopPropagation()"
+                        class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 disabled:bg-gray-400 transition-all">
+                        <i class="fa-solid fa-floppy-disk"></i> 데이터 저장
+                    </button>
                 </div>
 
-                
+                <div class="p-4 space-y-6">
+                    <section>
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">시군구</label>
+                            <select id="selRegionSigungu" class="w-full border rounded p-1.5 text-xs bg-white"></select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">법정동</label>
+                            <select id="selRegionDong" class="w-full border rounded p-1.5 text-xs bg-gray-50"></select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">지번</label>
+                            <input type="text" id="BUNJISearchInput"
+                                class="w-full border rounded p-1.5 text-xs outline-none">
+                        </div>
+                        <div id="regionTagContainer" class="tag-box"><span class="text-[10px] text-gray-300"></span>
+                        </div>
+                    </section>
 
-                <button id="btnSaveData" disabled onclick="event.stopPropagation()" class="bg-blue-600 text-white px-4 py-1 rounded text-xs hover:bg-blue-700 disabled:opacity-50 disabled:bg-gray-400 transition shadow-sm flex items-center gap-1">
-                    <i class="fa-solid fa-floppy-disk"></i> 데이터 저장
-                </button>
-            </summary>
+                    <section>
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div id="detailSelectGrid" class="space-y-1"></div>
+                        <div id="detailTagContainer" class="tag-box"><span class="text-[10px] text-gray-300"></span>
+                        </div>
+                    </section>
 
-            <div class="p-3 space-y-3">
-                
-                <div class="flex flex-col gap-2">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <div class="flex items-center gap-1">
-                            <label class="text-xs font-bold text-gray-500 whitespace-nowrap">시군구</label>
-                            <select id="selRegionSigungu" class="w-24 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer hover:bg-gray-50">
-                                <option value="">선택</option>
+                    <section class="space-y-1">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">매매가(억)</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="매매가"><span>~</span><input
+                                    type="number" class="range-input" data-col="매매가">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가"><span>~</span><input
+                                    type="number" class="range-input" data-col="공시지가">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">입지</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="입지">
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">긴급도</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="긴급도">
+                        </div>
+                    </section>
+
+                    <section class="space-y-1">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">대지면적</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="대지면적"><span>~</span><input
+                                    type="number" class="range-input" data-col="대지면적">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">연면적</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="연면적"><span>~</span><input
+                                    type="number" class="range-input" data-col="연면적">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">건축면적</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="건축면적"><span>~</span><input
+                                    type="number" class="range-input" data-col="건축면적">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">용적률산정연면적</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="용적률산정용연면적"><span>~</span><input
+                                    type="number" class="range-input" data-col="용적률산정용연면적">
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="space-y-1">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">사용승인일</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input" data-col="사용승인일"
+                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
+                                    data-col="사용승인일" oninput="formatDate(this)">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">대수선/리모델링</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input" data-col="대수선 및 리모델링"
+                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
+                                    data-col="대수선 및 리모델링" oninput="formatDate(this)">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">매각일</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input" data-col="매각일"
+                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
+                                    data-col="매각일" oninput="formatDate(this)">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">매각회수</label>
+                            <select id="salesCountSelect"
+                                class="w-full border rounded p-1.5 text-xs bg-white outline-none">
+                                <option value="all">전체</option>
+                                <option value="1">1회</option>
+                                <option value="2">2회</option>
+                                <option value="3">3회</option>
                             </select>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <label class="text-xs font-bold text-gray-500 whitespace-nowrap" >법정동</label>
-                            <select id="selRegionDong" disabled class="w-24 border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-gray-50 disabled:text-gray-400 cursor-pointer">
-                                <option value="">전체</option>
-                            </select>
+                    </section>
+
+                    <section class="space-y-1 pb-10">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">엘리베이터</label>
+                            <div class="input-wrapper"><input type="text" class="clean-input toggle-input"
+                                    data-col="엘리베이터" oninput="onlyNumbers(this)"><button type="button"
+                                    class="arrow-btn up" onclick="toggleArrow(this)"><i
+                                        class="fa-solid fa-arrow-up"></i></button></div>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500 whitespace-nowrap">상세지번</span>
-                            <input type="text" id="BUNJISearchInput" class="border rounded px-2 py-1 text-xs w-28 focus:border-blue-500 outline-none">
+                        <div class="filter-row">
+                            <label class="filter-label">주차장</label>
+                            <div class="input-wrapper"><input type="text" class="clean-input toggle-input"
+                                    data-col="주차장" oninput="onlyNumbers(this)"><button type="button"
+                                    class="arrow-btn up" onclick="toggleArrow(this)"><i
+                                        class="fa-solid fa-arrow-up"></i></button></div>
                         </div>
-                        <div id="regionTagContainer" class="flex-grow flex flex-wrap items-center gap-1 border-l pl-3 ml-1 min-h-[24px]">
-                            <span class="text-xs text-gray-300 py-0.5"></span>
+                        <div class="filter-row">
+                            <label class="filter-label">지상 규모</label>
+                            <div class="input-wrapper"><input type="text" class="clean-input toggle-input"
+                                    data-col="규모지상" oninput="onlyNumbers(this)"><button type="button"
+                                    class="arrow-btn up" onclick="toggleArrow(this)"><i
+                                        class="fa-solid fa-arrow-up"></i></button></div>
                         </div>
+                        <div class="filter-row">
+                            <label class="filter-label">지하 규모</label>
+                            <div class="input-wrapper"><input type="text" class="clean-input toggle-input"
+                                    data-col="규모지하" oninput="onlyNumbers(this)"><button type="button"
+                                    class="arrow-btn up" onclick="toggleArrow(this)"><i
+                                        class="fa-solid fa-arrow-up"></i></button></div>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+            <button id="sidebar-toggle"
+                class="bg-white border border-gray-300 shadow-md rounded-r-md px-1 py-4 hover:bg-gray-50 transition-all"
+                onclick="toggleSidebar()">
+                <i id="toggle-icon" class="fa-solid fa-chevron-left text-gray-400 text-[10px]"></i>
+            </button>
+
+            <main id="content-area">
+                <div class="view-tabs">
+                    <div id="tab-table" class="tab-btn active" onclick="switchView('table')">
+                    테이블
+                    </div>
+                    <div id="tab-map" class="tab-btn" onclick="switchView('map')">
+                        지도
                     </div>
                 </div>
 
-                <div class="flex flex-grow gap-2 border-t pt-2 border-dashed">
-                    <div id="detailSelectGrid" class="flex flex-wrap gap-2 items-center"></div>
-                    <div id="detailTagContainer" class="flex-grow flex flex-wrap items-center gap-1 border-l pl-3 ml-1 min-h-[24px]">
-                        <span class="text-xs text-gray-300 py-0.5"></span>
+                <div id="spreadsheet-view">
+                    <div id="loadingSpinner"
+                        class="hidden absolute inset-0 bg-white/80 z-50 flex items-center justify-center">
+                        <div class="flex flex-col items-center">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+                            <span class="text-xs font-bold text-blue-600">데이터 로딩 중...</span>
+                        </div>
+                    </div>
+                    <div id="spreadsheet-container" class="flex-1"></div>
+                    <div id="paginationContainer"
+                        class="hidden flex justify-center items-center gap-2 py-2 bg-gray-50 border-t">
+                        <button id="btnPrevPage" class="px-2 py-1 bg-white border rounded text-xs"><i
+                                class="fa-solid fa-chevron-left"></i></button>
+                        <span id="pageInfo" class="text-xs font-bold">1 / 1</span>
+                        <button id="btnNextPage" class="px-2 py-1 bg-white border rounded text-xs"><i
+                                class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
 
-                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
-                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">매매가</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="매매가">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="매매가">
-                        </div>
-                        <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                            <span class="text-xs font-bold text-gray-500">공시지가</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="공시지가">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-25 text-center" data-col="공시지가">
-                        </div>
-                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
-                    </div>
-                </div>
+                <div id="map-view" class="view-hidden">
+                    <div id="map-section">
+                        <div id="map" class="w-full h-full"></div>
 
-                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
-                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">입지</span>
-                            <input type="text" class="range-input border rounded px-1 py-0.5 text-xs w-10 text-center" data-col="입지">
+                        <div class="absolute top-4 left-4 z-[100] w-72">
+                            <div class="bg-white rounded-lg shadow-xl p-2 border border-gray-200 flex gap-2">
+                                <input type="text" id="searchInput"
+                                    class="flex-1 border rounded px-3 py-2 text-sm focus:outline-blue-500"
+                                    placeholder="주소 검색..." onkeypress="if(event.key==='Enter') searchAddress()">
+                                <button onclick="searchAddress()"
+                                    class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><i
+                                        class="fa-solid fa-search"></i></button>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">긴급도</span>
-                            <input type="text" class="range-input border rounded px-1 py-0.5 text-xs w-10 text-center" data-col="긴급도">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="flex flex-wrap items-center gap-x-6 gap-y-2 border-t pt-2 border-dashed">
-                    <div class="flex items-center gap-2 bg-gray-50 px-2 py-1 rounded border border-gray-100">
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">대지</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="대지면적">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="대지면적">
+                        <div class="absolute top-4 right-4 z-[100] flex flex-col gap-3">
+                            <button onclick="triggerPanoAtMarker()"
+                                class="bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-blue-50 text-blue-600 transition-all group">
+                                <i class="fa-solid fa-street-view text-xl"></i>
+                            </button>
+                            <button id="ruler-btn" onclick="toggleRuler()"
+                                class="bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-red-50 text-gray-700 transition-all group">
+                                <i class="fa-solid fa-ruler-combined text-xl"></i>
+                            </button>
                         </div>
-                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">연면적</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="연면적">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="연면적">
-                        </div>
-                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">건축면적</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="건축면적">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="건축면적">
-                        </div>
-                        <div class="w-px h-3 bg-gray-300 mx-1"></div>
-                        <div class="flex items-center gap-1">
-                            <span class="text-xs font-bold text-gray-500">용적률산정용연면적</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="용적률산정용연면적">
-                            <span class="text-gray-400">~</span>
-                            <input type="number" class="range-input border rounded px-1 py-0.5 text-xs w-14 text-center" data-col="용적률산정용연면적">
+
+                        <div id="pano-wrapper" class="hidden">
+                            <div class="pano-controls">
+                                <div onclick="togglePanoSize()" class="pano-btn"><i id="expand-icon"
+                                        class="fa-solid fa-expand"></i></div>
+                                <div onclick="closePano()" class="pano-btn"><i class="fa-solid fa-xmark"></i></div>
+                            </div>
+                            <div id="pano-view" class="w-full h-full"></div>
                         </div>
                     </div>
                 </div>
+            </main>
 
-                <div class="flex flex-wrap gap-x-8 gap-y-3 border-t pt-2 border-dashed">
-                    <div class="flex items-center gap-4">
-                        <div class="section-mini-header"></div>
-                        
-                        <div class="flex items-center">
-                            <span class="label">엘리베이터</span>
-                            <div class="input-wrapper w-20">
-                                <input type="text" class="clean-input toggle-input" data-col="엘리베이터" oninput="onlyNumbers(this)">
-                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                    <i class="fa-solid fa-arrow-up"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center">
-                            <span class="label">주차장</span>
-                            <div class="input-wrapper w-20">
-                                <input type="text" class="clean-input toggle-input" data-col="주차장" oninput="onlyNumbers(this)">
-                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                    <i class="fa-solid fa-arrow-up"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center bg-gray-50 px-2 py-0.5 rounded border border-gray-200 gap-2">
-                            <div class="flex items-center">
-                                <span class="label text-gray-500" style="margin-right:4px;">지상</span>
-                                <div class="input-wrapper w-16">
-                                    <input type="text" class="clean-input toggle-input" data-col="규모지상" oninput="onlyNumbers(this)">
-                                    <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                        <i class="fa-solid fa-arrow-up"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="w-px h-3 bg-gray-300"></div>
-                            <div class="flex items-center">
-                                <span class="label text-gray-500" style="margin-right:4px;">지하</span>
-                                <div class="input-wrapper w-16">
-                                    <input type="text" class="clean-input toggle-input" data-col="규모지하" oninput="onlyNumbers(this)">
-                                    <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                        <i class="fa-solid fa-arrow-up"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4 pl-4 border-l">
-                        <div class="section-mini-header"></div>
-
-                        <div class="flex items-center">
-                            <span class="label">사용승인일</span>
-                            <div class="input-wrapper w-32">
-                                <input type="text" class="clean-input date-input toggle-input" data-col="사용승인일" maxlength="10" oninput="formatDate(this)">
-                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                    <i class="fa-solid fa-arrow-up"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center">
-                            <span class="label">대수선</span>
-                            <div class="input-wrapper w-32">
-                                <input type="text" class="clean-input date-input toggle-input" data-col="대수선 및 리모델링" maxlength="10" oninput="formatDate(this)">
-                                <button type="button" class="arrow-btn up" onclick="toggleArrow(this)">
-                                    <i class="fa-solid fa-arrow-up"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </details>
-    </div>
-
-    <div class="flex-grow bg-white relative flex flex-col min-h-0">
-        
-        <div id="loadingSpinner" class="hidden absolute inset-0 bg-white/80 z-50 flex items-center justify-center">
-            <div class="flex flex-col items-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-                <span class="text-xs font-bold text-blue-600">데이터 불러오는 중...</span>
-            </div>
         </div>
-        
-        <div id="spreadsheet-container" class="border-b flex-grow"></div>
 
-        <div id="paginationContainer" class="hidden flex justify-center items-center gap-2 py-2 bg-gray-50 border-t mx-auto w-full">
-            <button id="btnPrevPage" class="px-2 py-0.5 bg-white border hover:bg-gray-100 rounded text-xs disabled:opacity-50"><i class="fa-solid fa-chevron-left"></i></button>
-            <span id="pageInfo" class="text-xs font-bold text-gray-600 mx-2">1 / 1</span>
-            <button id="btnNextPage" class="px-2 py-0.5 bg-white border hover:bg-gray-100 rounded text-xs disabled:opacity-50"><i class="fa-solid fa-chevron-right"></i></button>
-        </div>
+
+
     </div>
-
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
-        
+
         // --- 데이터 상수 ---
         const DIVISIONS = {
-    "강남구": ["개포동", "논현동", "대치동", "도곡동", "삼성동", "세곡동", "수서동", "신사동", "압구정동", "역삼동", "율현동", "일원동", "자곡동", "청담동"],
-    "강동구": ["강일동", "고덕동", "길동", "둔촌동", "명일동", "상일동", "성내동", "암사동", "천호동"],
-    "강북구": ["미아동", "번동", "수유동", "우이동"],
-    "강서구": ["가양동", "개화동", "공항동", "과해동", "내발산동", "등촌동", "마곡동", "방화동", "염창동", "오곡동", "오쇠동", "외발산동", "화곡동"],
-    "관악구": ["남현동", "봉천동", "신림동"],
-    "광진구": ["광장동", "구의동", "군자동", "능동", "자양동", "중곡동", "화양동"],
-    "구로구": ["가리봉동", "개봉동", "고척동", "구로동", "궁동", "신도림동", "오류동", "천왕동", "항동"],
-    "금천구": ["가산동", "독산동", "시흥동"],
-    "노원구": ["공릉동", "상계동", "월계동", "중계동", "하계동"],
-    "도봉구": ["도봉동", "방학동", "쌍문동", "창동"],
-    "동대문구": ["답십리동", "신설동", "용두동", "이문동", "장안동", "전농동", "제기동", "청량리동", "회기동", "휘경동"],
-    "동작구": ["노량진동", "대방동", "동작동", "본동", "사당동", "상도동", "신대방동", "흑석동"],
-    "마포구": ["공덕동", "당인동", "대흥동", "도화동", "동교동", "망원동", "마포동", "상수동", "상암동", "서교동", "성산동", "신공덕동", "신정동", "염리동", "연남동", "용강동", "중동", "창전동", "토정동", "하중동", "합정동", "아현동"],
-    "서대문구": ["냉천동", "남가좌동", "대현동", "미근동", "북가좌동", "북아현동", "봉원동", "신촌동", "연희동", "옥천동", "영천동", "창천동", "천연동", "충정로", "합동", "홍은동", "홍제동", "현저동"],
-    "서초구": ["내곡동", "반포동", "방배동", "서초동", "신원동", "양재동", "염곡동", "우면동", "원지동", "잠원동"],
-    "성동구": ["금호동1가", "금호동2가", "금호동3가", "금호동4가", "도선동", "마장동", "사근동", "상왕십리동", "성수동1가", "성수동2가", "송정동", "옥수동", "용답동", "하왕십리동", "행당동", "홍익동"],
-    "성북구": ["돈암동", "동선동", "보문동", "삼선동", "석관동", "성북동", "안암동", "장위동", "정릉동", "종암동", "길음동", "상월곡동", "하월곡동"],
-    "송파구": ["가락동", "거여동", "마천동", "문정동", "방이동", "삼전동", "석촌동", "송파동", "오금동", "오륜동", "잠실동", "장지동", "풍납동", "신천동"],
-    "양천구": ["목동", "신월동", "신정동"],
-    "영등포구": ["당산동", "대림동", "도림동", "문래동", "신길동", "양평동", "양화동", "여의도동", "영등포동"],
-    "용산구": ["갈월동", "남영동", "동빙고동", "동자동", "도원동", "보광동", "산천동", "서빙고동", "신계동", "용문동", "용산동1가", "용산동2가", "용산동3가", "용산동4가", "용산동5가", "용산동6가", "이촌동", "이태원동", "주성동", "청암동", "청파동1가", "청파동2가", "청파동3가", "한강로1가", "한강로2가", "한강로3가", "한남동", "효창동", "후암동", "원효로1가", "원효로2가", "원효로3가", "원효로4가"],
-    "은평구": ["갈현동", "구산동", "녹번동", "대조동", "불광동", "수색동", "신사동", "역촌동", "응암동", "증산동", "진관동"],
-    "종로구": ["가회동", "견지동", "경운동", "계동", "공평동", "관수동", "관훈동", "교남동", "교북동", "구기동", "궁정동", "권농동", "내수동", "내자동", "누상동", "누하동", "당주동", "도렴동", "돈의동", "동묘앞", "동숭동", "명륜1가", "명륜2가", "명륜3가", "명륜4가", "묘동", "무악동", "봉익동", "부암동", "사직동", "삼청동", "서린동", "세종로", "송월동", "송현동", "숭인동", "신교동", "신문로1가", "신문로2가", "신영동", "안국동", "연건동", "연지동", "예지동", "옥인동", "와룡동", "운니동", "원서동", "이화동", "익선동", "인의동", "장사동", "재동", "종로1가", "종로2가", "종로3가", "종로4가", "창성동", "창신동", "체부동", "청운동", "청진동", "충신동", "통인동", "평동", "평창동", "필운동", "행촌동", "혜화동", "홍영동", "홍지동", "홍파동", "화동", "효자동", "효제동"],
-    "중구": ["광희동1가", "광희동2가", "남대문로1가", "남창동", "남학동", "다동", "도화동", "만리동1가", "만리동2가", "무교동", "무학동", "묵정동", "방산동", "북창동", "봉래동1가", "봉래동2가", "산림동", "서소문동", "서초동", "소공동", "수표동", "수하동", "순화동", "신당동", "쌍림동", "예관동", "예장동", "오장동", "을지로1가", "을지로2가", "을지로3가", "을지로4가", "을지로5가", "을지로6가", "을지로7가", "의주로1가", "의주로2가", "인현동1가", "인현동2가", "입정동", "장교동", "장충동1가", "장충동2가", "저동1가", "저동2가", "정동", "주교동", "주자동", "중림동", "충정로1가", "태평로1가", "황학동", "흥인동"],
-    "중랑구": ["망우동", "면목동", "묵동", "상봉동", "신내동", "중화동"]
-};
+            "강남구": ["개포동", "논현동", "대치동", "도곡동", "삼성동", "세곡동", "수서동", "신사동", "압구정동", "역삼동", "율현동", "일원동", "자곡동", "청담동"],
+            "강동구": ["강일동", "고덕동", "길동", "둔촌동", "명일동", "상일동", "성내동", "암사동", "천호동"],
+            "강북구": ["미아동", "번동", "수유동", "우이동"],
+            "강서구": ["가양동", "개화동", "공항동", "과해동", "내발산동", "등촌동", "마곡동", "방화동", "염창동", "오곡동", "오쇠동", "외발산동", "화곡동"],
+            "관악구": ["남현동", "봉천동", "신림동"],
+            "광진구": ["광장동", "구의동", "군자동", "능동", "자양동", "중곡동", "화양동"],
+            "구로구": ["가리봉동", "개봉동", "고척동", "구로동", "궁동", "신도림동", "오류동", "온수동", "천왕동", "항동"],
+            "금천구": ["가산동", "독산동", "시흥동"], "노원구": ["공릉동", "상계동", "월계동", "중계동", "하계동"],
+            "도봉구": ["도봉동", "방학동", "쌍문동", "창동"],
+            "동대문구": ["답십리동", "신설동", "용두동", "이문동", "장안동", "전농동", "제기동", "청량리동", "회기동", "휘경동"],
+            "동작구": ["노량진동", "대방동", "동작동", "본동", "사당동", "상도1동", "상도동", "신대방동", "흑석동"],
+            "마포구": ["공덕동", "구수동", "노고산동", "당인동", "대흥동", "도화동", "동교동", "마포동", "망원동", "상수동", "상암동", "서교동", "성산동", "신공덕동", "신수동", "신정동", "아현동", "연남동", "염리동", "용강동", "중동", "창전동", "토정동", "하중동", "합정동", "현석동"],
+            "서대문구": ["남가좌동", "냉천동", "대신동", "대현동", "미근동", "봉원동", "북가좌동", "북아현동", "신촌동", "연희동", "영천동", "옥천동", "창천동", "천연동", "충정로2가", "충정로3가", "합동", "현저동", "홍은동", "홍제동"],
+            "서초구": ["내곡동", "반포동", "방배동", "서초동", "신원동", "양재동", "염곡동", "우면동", "원지동", "잠원동"],
+            "성동구": ["금호동1가", "금호동2가", "금호동3가", "금호동4가", "도선동", "마장동", "사근동", "상왕십리동", "성수동1가", "성수동2가", "송정동", "옥수동", "용답동", "응봉동", "하왕십리동", "행당동", "홍익동"],
+            "성북구": ["길음동", "돈암동", "동선동1가", "동선동2가", "동선동3가", "동선동4가", "동선동5가", "동소문동1가", "동소문동2가", "동소문동3가", "동소문동4가", "동소문동5가", "동소문동6가", "동소문동7가", "보문동1가", "보문동2가", "보문동3가", "보문동4가", "보문동5가", "보문동6가", "보문동7가", "삼선동1가", "삼선동2가", "삼선동3가", "삼선동4가", "삼선동5가", "상월곡동", "석관동", "성북동", "성북동1가", "안암동1가", "안암동2가", "안암동3가", "안암동4가", "안암동5가", "장위동", "정릉동", "종암동", "하월곡동"],
+            "송파구": ["가락동", "거여동", "마천동", "문정동", "방이동", "삼전동", "석촌동", "송파동", "신천동", "오금동", "잠실동", "장지동", "풍납동"],
+            "양천구": ["목동", "신월동", "신정동"],
+            "영등포구": ["당산동", "당산동1가", "당산동2가", "당산동3가", "당산동4가", "당산동5가", "당산동6가", "대림동", "도림동", "문래동1가", "문래동2가", "문래동3가", "문래동4가", "문래동5가", "문래동6가", "신길동", "양평동", "양평동1가", "양평동2가", "양평동3가", "양평동4가", "양평동5가", "양평동6가", "양화동", "여의도동", "영등포동", "영등포동1가", "영등포동2가", "영등포동3가", "영등포동4가", "영등포동5가", "영등포동6가", "영등포동7가", "영등포동8가"],
+            "용산구": ["갈월동", "남영동", "도원동", "동빙고동", "동자동", "문배동", "보광동", "산천동", "서계동", "서빙고동", "신계동", "신창동", "용문동", "용산동1가", "용산동2가", "용산동3가", "용산동4가", "용산동5가", "용산동6가", "원효로1가", "원효로2가", "원효로3가", "원효로4가", "이촌동", "이태원동", "주성동", "청암동", "청파동1가", "청파동2가", "청파동3가", "한강로1가", "한강로2가", "한강로3가", "한남동", "효창동", "후암동"],
+            "은평구": ["갈현동", "구산동", "녹번동", "대조동", "불광동", "수색동", "신사동", "역촌동", "응암동", "증산동", "진관동"],
+            "종로구": ["가회동", "견지동", "경운동", "계동", "공평동", "관수동", "관철동", "관훈동", "교남동", "교북동", "구기동", "궁정동", "권농동", "낙원동", "내수동", "내자동", "누상동", "누하동", "당주동", "도렴동", "돈의동", "동숭동", "명륜1가", "명륜2가", "명륜3가", "명륜4가", "묘동", "무악동", "봉익동", "부암동", "사간동", "사직동", "삼청동", "서린동", "세종로", "소격동", "송월동", "송현동", "수송동", "숭인동", "신교동", "신문로1가", "신문로2가", "신영동", "안국동", "연건동", "연지동", "예지동", "옥인동", "와룡동", "운니동", "원남동", "원서동", "이화동", "익선동", "인사동", "인의동", "장사동", "재동", "적선동", "종로1가", "종로2가", "종로3가", "종로4가", "종로5가", "종로6가", "중학동", "창성동", "창신동", "청운동", "청진동", "체부동", "충신동", "통의동", "통인동", "팔판동", "평동", "평창동", "필운동", "행촌동", "혜화동", "홍지동", "홍파동", "화동", "효자동", "효제동", "훈정동"],
+            "중구": ["광희동1가", "광희동2가", "남대문로1가", "남대문로2가", "남대문로3가", "남대문로4가", "남대문로5가", "남산동1가", "남산동2가", "남산동3가", "남창동", "남학동", "다동", "만리동1가", "만리동2가", "명동1가", "명동2가", "무교동", "무학동", "묵정동", "방산동", "봉래동1가", "봉래동2가", "북창동", "산림동", "삼각동", "서소문동", "소공동", "수표동", "수하동", "순화동", "신당동", "쌍림동", "예관동", "예장동", "오장동", "을지로1가", "을지로2가", "을지로3가", "을지로4가", "을지로5가", "을지로6가", "을지로7가", "의주로1가", "의주로2가", "인현동1가", "인현동2가", "입정동", "장교동", "장충동1가", "장충동2가", "저동1가", "저동2가", "정동", "주교동", "주자동", "중림동", "초동", "충무로1가", "충무로2가", "충무로3가", "충무로4가", "충무로5가", "충정로1가", "태평로1가", "태평로2가", "필동1가", "필동2가", "필동3가", "황학동", "회현동1가", "회현동2가", "회현동3가", "흥인동"],
+            "중랑구": ["망우동", "면목동", "묵동", "상봉동", "신내동", "중화동"]
+        }
 
         const PREDEFINED_DATA = {
-    "주용도코드명": ["공공용시설", "공동주택", "공장", "관광휴게시설", "교육연구및복지시설", "교육연구시설", "교정및군사시설", "교정시설", "국방", "군사시설", "근린생활시설", "노유자시설", "다가구주택", "단독주택", "동물및식물관련시설", "묘지관련시설", "문화및집회시설", "발전시설", "방송통신시설", "분뇨.쓰레기처리시설", "수련시설", "숙박시설", "업무시설", "운동시설", "운수시설", "위락시설", "위험물저장및처리시설", "의료시설", "자동차관련시설", "자원순환관련시설", "장례시설", "제1종근린생활시설", "제2종근린생활시설", "종교시설", "창고시설", "판매및영업시설", "판매시설"],
-    "기타용도": ["가족호텔", "강당", "개인스튜디오", "게스트하우스", "게임제공업소", "경로당", "경비실", "고시원", "공공청사", "공동체주택", "공동주택", "공연장", "공장", "과학관", "관광호텔", "교회", "교육연구시설", "구내식당", "금융업소", "기숙사", "기계실", "기원", "노래연습장", "노유자시설", "노인복지시설", "단란주점", "단독주택", "단지형다세대", "다각구용", "다가구주택", "다동물사", "다방", "다세대주택", "다중생활시설", "다중주택", "대피소", "데이터센터", "독서실", "동물병원", "동주민센터", "동사무소", "마을회관", "매매장", "모텔", "목욕장", "목욕탕", "무도장", "문화및집회시설", "미술관", "미용실", "미용원", "박물관", "발전기실", "방재실", "백화점", "병원", "보건소", "보육시설", "부동산중개업소", "분뇨.쓰레기처리시설", "사무소", "사무실", "사우나", "사찰", "사진관", "산후조리원", "상가", "서점", "성당", "세탁소", "세차장", "소매점", "소형주택", "소방서", "수녀원", "수도원", "수련시설", "숙박시설", "승강기실", "실버케어센터", "식당", "시장", "아파트", "아파트형공장", "안마시술소", "어린이집", "에어로빅실", "여관", "여객자동차터미널", "여인숙", "연결통로", "연립주택", "연구소", "영화관", "예식장", "오피스텔", "우체국", "운수시설", "원룸형주택", "위락시설", "위험물저장및처리시설", "의원", "이용원", "인터넷컴퓨터게임시설", "일반음식점", "자원순환관련시설", "장례시설", "장례식장", "저장고", "전기실", "전시장", "전통찻집", "점포", "정비공장", "제과점", "제조업소", "제조장", "종교시설", "종합병원", "주민공동시설", "주민복리시설", "주유소", "주차장", "주차타워", "지구대", "지식산업센터", "창고", "창고시설", "체력단련장", "체육도장", "치과의원", "카페", "커피숍", "테니스장", "통신실", "파출소", "판매시설", "편의점", "펌프실", "표구점", "하숙", "하역장", "학교", "학원", "한의원", "화장실", "회의장", "휴게음식점", "휘트니스", "MDF실"],
-    "지목명": ["공장용지", "대", "잡종지", "주차장"],
-    "용도지역": ["근린상업지역", "도시지역기타", "보전녹지지역", "생산녹지지역", "유통상업지역", "일반상업지역", "일반주거지역", "자연녹지지역", "전용주거지역", "제1종일반주거지역", "제1종전용주거지역", "제2종일반주거지역", "제2종전용주거지역", "제3종일반주거지역", "준공업지역", "준주거지역", "중심상업지역"],
-    "토지이용상황": ["골프장 회원제", "공업기타", "공업나지", "공업용", "공원등", "공항", "과수원", "기타", "다세대", "단독", "답", "답기타", "도로등", "물류터미널", "발전소", "상업기타", "상업나지", "상업용", "아파트", "업무용", "여객자동차터미널", "연립", "운동장등", "위험시설", "유해.혐오시설", "임야기타", "자연림", "전", "전기타", "전창고", "전축사", "조림", "주거기타", "주거나지", "주상기타", "주상나지", "주상용", "주차장등", "콘도미니엄", "토지임야", "특수기타", "하천등"],
-    "도로접면": ["광대로한면", "광대세각", "광대소각", "맹지", "세로각지(가)", "세로각지(불)", "세로한면(가)", "세로한면(불)", "소로각지", "소로한면", "중로각지", "중로한면", "지정되지않음"],
-    "형상": ["가로장방", "부정형", "사다리형", "세로장방", "자루형", "정방형", "지정되지않음"]
-};
+            "주용도코드명": ["공공용시설", "공동주택", "공장", "관광휴게시설", "교육연구및복지시설", "교육연구시설", "교정및군사시설", "교정시설", "국방", "군사시설", "근린생활시설", "노유자시설", "다가구주택", "단독주택", "동물및식물관련시설", "묘지관련시설", "문화및집회시설", "발전시설", "방송통신시설", "분뇨.쓰레기처리시설", "수련시설", "숙박시설", "업무시설", "운동시설", "운수시설", "위락시설", "위험물저장및처리시설", "의료시설", "자동차관련시설", "자원순환관련시설", "장례시설", "제1종근린생활시설", "제2종근린생활시설", "종교시설", "창고시설", "판매및영업시설", "판매시설"],
+            "기타용도": ["가족호텔", "강당", "개인스튜디오", "게스트하우스", "게임제공업소", "경로당", "경비실", "고시원", "공공청사", "공동체주택", "공동주택", "공연장", "공장", "과학관", "관광호텔", "교회", "교육연구시설", "구내식당", "금융업소", "기숙사", "기계실", "기원", "노래연습장", "노유자시설", "노인복지시설", "단란주점", "단독주택", "단지형다세대", "다각구용", "다가구주택", "다동물사", "다방", "다세대주택", "다중생활시설", "다중주택", "대피소", "데이터센터", "독서실", "동물병원", "동주민센터", "동사무소", "마을회관", "매매장", "모텔", "목욕장", "목욕탕", "무도장", "문화및집회시설", "미술관", "미용실", "미용원", "박물관", "발전기실", "방재실", "백화점", "병원", "보건소", "보육시설", "부동산중개업소", "분뇨.쓰레기처리시설", "사무소", "사무실", "사우나", "사찰", "사진관", "산후조리원", "상가", "서점", "성당", "세탁소", "세차장", "소매점", "소형주택", "소방서", "수녀원", "수도원", "수련시설", "숙박시설", "승강기실", "실버케어센터", "식당", "시장", "아파트", "아파트형공장", "안마시술소", "어린이집", "에어로빅실", "여관", "여객자동차터미널", "여인숙", "연결통로", "연립주택", "연구소", "영화관", "예식장", "오피스텔", "우체국", "운수시설", "원룸형주택", "위락시설", "위험물저장및처리시설", "의원", "이용원", "인터넷컴퓨터게임시설", "일반음식점", "자원순환관련시설", "장례시설", "장례식장", "저장고", "전기실", "전시장", "전통찻집", "점포", "정비공장", "제과점", "제조업소", "제조장", "종교시설", "종합병원", "주민공동시설", "주민복리시설", "주유소", "주차장", "주차타워", "지구대", "지식산업센터", "창고", "창고시설", "체력단련장", "체육도장", "치과의원", "카페", "커피숍", "테니스장", "통신실", "파출소", "판매시설", "편의점", "펌프실", "표구점", "하숙", "하역장", "학교", "학원", "한의원", "화장실", "회의장", "휴게음식점", "휘트니스", "MDF실"],
+            "지목명": ["공장용지", "대", "잡종지", "주차장"],
+            "용도지역": ["근린상업지역", "도시지역기타", "보전녹지지역", "생산녹지지역", "유통상업지역", "일반상업지역", "일반주거지역", "자연녹지지역", "전용주거지역", "제1종일반주거지역", "제1종전용주거지역", "제2종일반주거지역", "제2종전용주거지역", "제3종일반주거지역", "준공업지역", "준주거지역", "중심상업지역"],
+            "토지이용상황": ["골프장 회원제", "공업기타", "공업나지", "공업용", "공원등", "공항", "과수원", "기타", "다세대", "단독", "답", "답기타", "도로등", "물류터미널", "발전소", "상업기타", "상업나지", "상업용", "아파트", "업무용", "여객자동차터미널", "연립", "운동장등", "위험시설", "유해.혐오시설", "임야기타", "자연림", "전", "전기타", "전창고", "전축사", "조림", "주거기타", "주거나지", "주상기타", "주상나지", "주상용", "주차장등", "콘도미니엄", "토지임야", "특수기타", "하천등"],
+            "도로접면": ["광대로한면", "광대세각", "광대소각", "맹지", "세로각지(가)", "세로각지(불)", "세로한면(가)", "세로한면(불)", "소로각지", "소로한면", "중로각지", "중로한면", "지정되지않음"],
+            "형상": ["가로장방", "부정형", "사다리형", "세로장방", "자루형", "정방형", "지정되지않음"]
+        };
 
         const COLUMN_MAP = {
             '시/도': '시도', '시/군/구': '시군구', '주소': '주소',
             '지목명': '지목', '지형형상': '형상', '도로접면': '도로',
             '대지면적': '대지면적', '연면적': '연면적', '건축면적': '건축면적',
-            '토지이용상황':'토지이용상황',
+            '토지이용상황': '토지이용상황',
             '용도지역': '용도지역', '주용도코드명': '주용도', '기타용도내용': '기타용도',
             '건폐율': '건폐율', '법정건폐율': '법정건폐율', '건폐율 - 법정건폐율': '건폐율법정건폐율',
             '용적률': '용적률', '법정용적율': '법정용적률', '용적률 - 법정용적률': '용적률법정용적률',
-            '용적률산정연면적': '용적률산정용연면적',
+            '용적률산정용연면적': '용적률산정용연면적',
             '규모지상': '규모지상', '규모지하': '규모지하', '엘리베이터': '엘리베이터',
             '주차장': '주차장', // parking_count 대신 DB컬럼명 통일 가정
             '사용승인일': '사용승인일', '대수선 및 리모델링': '대수선및리모델링',
             '구분상가': '구분상가구분',
             '공시지가(현재)': '공시지가',
             '공시지가(5년전)': '공시지가5년전',
-            '공시지가(10년전)': '공시지가10년전', 
+            '공시지가(10년전)': '공시지가10년전',
             '공시지가 상승률(5년)': '공시지가상승률5년',
             '공시지가 상승률(10년)': '공시지가상승률10년',
             '공시지가 기준': '공시지가기준',
             '매매가(억)': '매매가억', '총공시지가와 매매가 비율': '총공시지가와매매가비율',
             '상황': '상황', '긴급도': '긴급도', '등급': '등급', '컨디션': '컨디션', '입지': '입지',
-            '매수의향서':'매수의향서','연락처':'연락처','성향':'성향','관계':'관계','사진':'사진','브리핑':'브리핑',
-            '두꺼비광고등록유무':'두꺼비광고등록유무','건물용도':'건물용도','신축비용':'신축비용','리모델링비용':'리모델링비용','지주상황':'지주상황',
-            '명도':'명도','용도변경':'용도변경','멸실':'멸실','영상번호/분/초':'영상번호분초',
-            'AI추정가':'AI추정가','AI추정가와 매매가 비율':'AI추정가 매매가 비율','총보증금':'총보증금','총월세(부가세 별도)':'총월세부가세별도','총관리비':'총관리비','수익률':'수익률'
+            '매수의향서': '매수의향서', '연락처': '연락처', '성향': '성향', '관계': '관계', '사진': '사진', '브리핑': '브리핑',
+            '두꺼비광고등록유무': '두꺼비광고등록유무', '건물용도': '건물용도', '신축비용': '신축비용', '리모델링비용': '리모델링비용', '지주상황': '지주상황',
+            '명도': '명도', '용도변경': '용도변경', '멸실': '멸실', '영상번호/분/초': '영상번호분초',
+            'AI추정가': 'AI추정가', 'AI추정가와 매매가 비율': 'AI추정가 매매가 비율', '총보증금': '총보증금', '총월세(부가세 별도)': '총월세부가세별도', '총관리비': '총관리비', '수익률': '수익률', '네이버광고': '네이버광고', '네이버광고과거': '네이버광고과거', '네이버광고상승률': '네이버광고상승률',
+            '매각일1': '매각일1', '매각일2': '매각일2', '매각일3': '매각일3', '매각손익': '매각손익',
+            '매각액1': '매각액1', '매각액2': '매각액2', '매각액3': '매각액3'
         };
 
         // 역매핑 (DB컬럼명 -> 표기명): 데이터 로드 시 매칭용 (필요시 사용)
@@ -472,6 +607,9 @@
         };
 
         window.onload = async () => {
+
+            initMap();
+
             initRegionSelectors();
             initDetailSelectors();
             await Promise.all([loadWishlist(), loadColumnSettings()]);
@@ -479,24 +617,25 @@
             setupPaginationEvents();
             setupEnterKeySearch();
 
-            document.getElementById('btnToggleUnit').addEventListener('click', function() {
-            isPyungMode = !isPyungMode;
-            
-            // 버튼 텍스트 변경
-            const unitText = document.getElementById('unitText');
-            unitText.innerText = isPyungMode ? "㎡" : "평";
-            
-            // 테이블 다시 그리기 (렌더러가 호출됨)
-            if (hot) {
-                hot.render();
-            }
-        });
+            document.getElementById('btnToggleUnit').addEventListener('click', function () {
+                isPyungMode = !isPyungMode;
+
+                // 버튼 텍스트 변경
+                const unitText = document.getElementById('unitText');
+                unitText.innerText = isPyungMode ? "㎡" : "평";
+
+                // 테이블 다시 그리기 (렌더러가 호출됨)
+                if (hot) {
+                    hot.render();
+                }
+            });
         };
 
         // =========================================================
         // 1. 지역 선택 로직 (New Style 4)
         // =========================================================
         function initRegionSelectors() {
+            els.selSigungu.innerHTML = '<option value="" selected>선택</option>';
             // 시군구 채우기
             Object.keys(DIVISIONS).forEach(si => {
                 const opt = document.createElement('option');
@@ -509,11 +648,11 @@
             els.selSigungu.addEventListener('change', () => {
                 const si = els.selSigungu.value;
                 els.selDong.innerHTML = '<option value="" disabled selected>선택</option>';
-                
+
                 if (si && DIVISIONS[si]) {
                     els.selDong.disabled = false;
                     els.selDong.classList.replace('bg-gray-50', 'bg-white');
-                    
+
                     // 전체 옵션
                     const allOpt = document.createElement('option');
                     allOpt.value = "전체";
@@ -555,18 +694,18 @@
         // =========================================================
         function initDetailSelectors() {
             els.detailSelectGrid.innerHTML = '';
-            
+
             Object.entries(PREDEFINED_DATA).forEach(([key, values]) => {
                 // Wrapper - 공간 절약을 위해 block이 아닌 컴팩트한 flex 아이템으로 변경
                 const wrapper = document.createElement('div');
                 wrapper.className = "flex items-center"; // Layout change
-                
+
                 // Select - w-full 제거, 글자 크기 축소, 패딩 축소
                 const select = document.createElement('select');
                 select.className = "border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer hover:bg-gray-50";
                 // 플레이스홀더처럼 보이게 처리
                 select.innerHTML = `<option value="" disabled selected>${key}</option>`;
-                
+
                 values.forEach(v => {
                     const opt = document.createElement('option');
                     opt.value = v;
@@ -578,7 +717,7 @@
                 select.addEventListener('change', () => {
                     const val = select.value;
                     if (!val) return;
-                    
+
                     const tagKey = `${key}:${val}`; // 구분용 Key
                     const display = `${key} - ${val}`;
 
@@ -600,7 +739,7 @@
         // =========================================================
         function addTag(setObj, container, displayText, actualKey = null) {
             const key = actualKey || displayText;
-            
+
             // UI 초기화 (placeholder 제거)
             if (setObj.size === 0) container.innerHTML = '';
 
@@ -613,7 +752,7 @@
                 ${displayText}
                 <i class="fa-solid fa-xmark cursor-pointer text-blue-400 hover:text-red-500 transition text-[10px]"></i>
             `;
-            
+
             // 삭제 이벤트
             tag.querySelector('i').onclick = () => {
                 setObj.delete(key);
@@ -632,20 +771,20 @@
         els.searchBtn.addEventListener('click', () => { currentFilters = collectFilters(); currentPage = 1; fetchData(1); });
         els.resetBtn.addEventListener('click', () => {
             // 1. 선택된 태그 및 세트 초기화
-            selectedRegionSet.clear(); 
+            selectedRegionSet.clear();
             selectedDetailSet.clear();
             els.regionTagContainer.innerHTML = '<span class="text-xs text-gray-300 py-0.5">지역 미선택</span>';
             els.detailTagContainer.innerHTML = '<span class="text-xs text-gray-300 py-0.5">상세조건 미선택</span>';
-            
+
             // 2. 지역 선택 셀렉트 박스 초기화
-            els.selSigungu.value = ""; 
+            els.selSigungu.value = "";
             els.selDong.innerHTML = '<option value="">선택</option>';
-            els.selDong.disabled = true; 
+            els.selDong.disabled = true;
             els.selDong.classList.replace('bg-white', 'bg-gray-50');
-            
+
             // 3. 상세조건 셀렉트 박스 초기화
             document.querySelectorAll('#detailSelectGrid select').forEach(s => s.value = "");
-            
+
             // 4. [수정됨] 입력 필드 초기화 
             // .toggle-input (새로 추가된 엘리베이터, 날짜 등) 클래스 추가
             document.querySelectorAll('.range-input, .toggle-input, #BUNJISearchInput, #mainSearchInput').forEach(inp => inp.value = '');
@@ -653,11 +792,11 @@
             // 5. [추가됨] 화살표 버튼 상태 초기화 (모두 UP/빨강 상태로 복귀)
             document.querySelectorAll('.arrow-btn').forEach(btn => {
                 const icon = btn.querySelector('i');
-                
+
                 // 버튼 클래스 초기화
                 btn.classList.remove('down');
                 btn.classList.add('up');
-                
+
                 // 아이콘 클래스 초기화
                 if (icon) {
                     icon.classList.remove('fa-arrow-down');
@@ -669,7 +808,7 @@
         // 화살표 토글 함수 (▲ <-> ▼)
         function toggleArrow(btn) {
             const icon = btn.querySelector('i');
-            
+
             if (icon.classList.contains('fa-arrow-up')) {
                 // Up -> Down (이하/이전)
                 icon.classList.remove('fa-arrow-up');
@@ -714,52 +853,32 @@
             const multiFilters = {};
             selectedDetailSet.forEach(val => {
                 const [displayKey, value] = val.split(":");
-                const dbKey = COLUMN_MAP[displayKey] || displayKey; 
+                const dbKey = COLUMN_MAP[displayKey] || displayKey;
                 if (!multiFilters[dbKey]) multiFilters[dbKey] = [];
                 multiFilters[dbKey].push(value);
             });
 
             const keyword = els.searchInput.value;
             const bunji = els.bunjiInput.value;
-            
+            const salesCount = document.getElementById('salesCountSelect').value; // 회수 추가
+
             const ranges = {};
-            const dateRange = { start: '', end: '' };
+            document.querySelectorAll('.range-input').forEach((input, idx, inputs) => {
+                const col = input.dataset.col;
+                if (!input.value.trim()) return;
 
-            
+                if (!ranges[col]) ranges[col] = {};
 
-            // 1. 기존 Range Input 처리 (Min ~ Max)
-            document.querySelectorAll('.range-input').forEach(input => {
-                const col = input.dataset.col; 
-                if (input.value) {
-                    if (!ranges[col]) ranges[col] = {};
-                    const isMin = input.nextElementSibling && input.nextElementSibling.tagName === 'SPAN';
-                    ranges[col][isMin ? 'min' : 'max'] = input.value;
-                }
+                // 동일 컬럼의 첫 번째 인풋은 min, 두 번째는 max로 판단
+                const isMin = Array.from(document.querySelectorAll(`.range-input[data-col="${col}"]`)).indexOf(input) === 0;
+                ranges[col][isMin ? 'min' : 'max'] = input.value;
             });
 
-            // 2. [New] Toggle Input 처리 (화살표 방향에 따라 Min/Max 결정)
-            document.querySelectorAll('.toggle-input').forEach(input => {
-                const val = input.value;
-                if (!val) return;
-
-                const col = input.dataset.col; // 예: 엘리베이터, 사용승인일
-                const btn = input.nextElementSibling;
-                // Up(Red) = 이상(>=, min), Down(Blue) = 이하(<=, max)
-                const isUp = btn.classList.contains('up'); 
-                const rangeKey = isUp ? 'min' : 'max';
-
-                // 날짜 컬럼 특수 처리 (app.py 구조에 맞춤)
-                if (col === '사용승인일') {
-                    if (isUp) dateRange.start = val;
-                    else dateRange.end = val;
-                } else {
-                    // 일반 숫자 (엘리베이터, 주차장 등) 및 기타 날짜
-                    if (!ranges[col]) ranges[col] = {};
-                    ranges[col][rangeKey] = val;
-                }
-            });
-
-            return { keyword, bunji, sigungu: sigunguList, bjd: dongList, multi_filters: multiFilters, ranges, date_range: dateRange };
+            return {
+                keyword, bunji, sigungu: sigunguList, bjd: dongList,
+                multi_filters: multiFilters, ranges,
+                sales_count: salesCount // 서버로 전송
+            };
         }
 
         // =========================================================
@@ -770,7 +889,7 @@
             try {
                 const res = await fetch('/api/get_data', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ...currentFilters, page, limit: ITEMS_PER_PAGE })
                 });
                 const responseData = await res.json();
@@ -778,115 +897,164 @@
                 totalRows = responseData.total || 0;
                 currentPage = responseData.page || 1;
 
+                if (data.length > 0) {
+                    const first = data[0];
+                    // script.js에서 가져온 지도 이동 함수 직접 호출
+                    moveToLocation(first.y, first.x);
+                }
+
                 renderTable(data);
                 document.getElementById('btnSaveData').disabled = (data.length === 0);
                 updatePaginationUI();
             } catch (e) { console.error(e); } finally { els.spinner.classList.add('hidden'); }
         }
 
-        function renderTable(data) {
+        document.getElementById('btnMainSearch').addEventListener('click', () => {
+            currentFilters = collectFilters(); // 기존 필터 수집 함수
+            localStorage.setItem('mapFilters', JSON.stringify(currentFilters)); // 필터 정보 저장
+            currentPage = 1;
+            fetchData(1);
+        });
 
+
+        // renderTable 함수 내부 수정
+        function renderTable(data) {
             const container = document.getElementById('spreadsheet-container');
             if (hot) hot.destroy();
-            
-            // 저장된 순서가 있으면 그걸 쓰고, 없으면 기본 순서(TARGET_COLUMNS = Display Names)
+
             const displayHeaderOrder = savedColumnOrder.length > 0 ? savedColumnOrder : TARGET_COLUMNS;
-            
-            // ★ [핵심] config 생성 시 data 속성을 DB컬럼명으로 매핑
             const columnsConfig = displayHeaderOrder.map(headerName => getColumnConfig(headerName));
 
             hot = new Handsontable(container, {
-                data: data, // 데이터는 DB컬럼명을 키로 가짐
-                colHeaders: displayHeaderOrder, // 헤더는 노출값(Display Name)
-                columns: columnsConfig, // 매핑 정보
-                rowHeaders: true, height: '100%', width: '100%',
+                data: data,
+                colHeaders: displayHeaderOrder,
+                columns: columnsConfig,
+                rowHeaders: true,
+                height: '100%',
+                width: '100%',
                 licenseKey: 'non-commercial-and-evaluation',
-                manualColumnMove: true, manualColumnResize: true, filters: true,
-                dropdownMenu: true, contextMenu: true,
-                afterColumnMove: (m, f, d, p, changed) => { if(changed) saveColumnOrder(); }
+                manualColumnMove: true,
+                manualColumnResize: false,
+                filters: false,
+                dropdownMenu: false,
+                contextMenu: false,
+
+                // --- [추가된 로직: 매각손익 계산] ---
+                afterChange: function (changes, source) {
+                    // 'loadData'나 자동 계산('auto_calc')에 의한 변경은 무시 (무한루프 방지)
+                    if (source === 'loadData' || source === 'auto_calc') return;
+
+                    changes.forEach(([row, prop, oldValue, newValue]) => {
+                        // 매각액1 또는 매각액2가 변경된 경우
+                        if (prop === '매각액1' || prop === '매각액2') {
+                            const val1 = parseFloat(this.getDataAtRowProp(row, '매각액1'));
+                            const val2 = parseFloat(this.getDataAtRowProp(row, '매각액2'));
+
+                            // 매각액1이 0이 아니고 두 값이 모두 존재할 때 계산
+                            if (!isNaN(val1) && !isNaN(val2) && val1 !== 0) {
+                                const profitRate = ((val2 - val1) / val1) * 100;
+                                // 결과를 '매각손익' 컬럼에 세팅
+                                this.setDataAtRowProp(row, '매각손익', profitRate.toFixed(2), 'auto_calc');
+                            } else if (val1 === 0 || isNaN(val1) || isNaN(val2)) {
+                                this.setDataAtRowProp(row, '매각손익', null, 'auto_calc');
+                            }
+                        }
+                    });
+                },
+                // -----------------------------------
+
+                afterColumnMove: (m, f, d, p, changed) => { if (changed) saveColumnOrder(); }
             });
         }
-
         function getColumnConfig(displayHeader) {
-            // ★ 노출값(displayHeader) -> DB컬럼명(dbKey) 변환
             const dbKey = COLUMN_MAP[displayHeader] || displayHeader;
 
-            const config = { 
-                data: dbKey, // 데이터 바인딩은 DB 컬럼명으로
-                // renderer: Handsontable.renderers.TextRenderer 
+            const config = {
+                data: dbKey,
             };
 
-            // 읽기 전용 컬럼 설정 (ctid, 주소, 승인일 등)
             if (dbKey === 'ctid' || displayHeader === '주소' || displayHeader.includes('승인일')) config.readOnly = true;
-            
-            // 렌더러 설정
-            const dateCols = ['사용승인일', '대수선 및 리모델링'];
-            if (displayHeader === '주소') config.renderer = addressRenderer;
-            if (dateCols.includes(displayHeader)) config.renderer = dateRenderer;
-            
 
-            // 포맷팅 그룹 정의 (노출값 기준 or DB값 기준 상관없으나 노출값 기준으로 분류)
-            const moneyCols = ['공시지가(현재)', '공시지가(5년전)', '공시지가(10년전)', '공시지가 기준', '매매가(억)'];
-            const decimalCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적']; 
-            const percentCols = displayHeader.includes('비율') || displayHeader.includes('상승률') || displayHeader.includes('건폐율') || (displayHeader.includes('용적률') && (!displayHeader.includes('용적률산정용연면적')));
+            // 매각손익은 계산된 결과이므로 읽기 전용으로 설정하는 것이 안전합니다.
+            if (displayHeader === '매각손익') config.readOnly = true;
+
+            if (displayHeader === '주소') config.renderer = addressRenderer;
+            const dateCols = ['사용승인일', '대수선 및 리모델링'];
+
+            const dateCols_v2 = ['매각일1', '매각일2', '매각일3']
+
+            if (dateCols.includes(displayHeader)) config.renderer = dateRenderer;
+            if (dateCols_v2.includes(displayHeader)) config.renderer = dateRenderer2;
+
+            // 포맷팅 그룹
+            const moneyCols = ['공시지가(현재)', '공시지가(5년전)', '공시지가(10년전)', '공시지가 기준', '매매가(억)', '네이버광고', '네이버광고과거', '매각액1', '매각액2', '매각액3'];
+            const decimalCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적'];
+
+
+            // [수정] 매각손익을 백분율 컬럼 그룹에 추가
+            const percentCols = displayHeader.includes('비율') ||
+                displayHeader.includes('상승률') ||
+                displayHeader.includes('건폐율') ||
+                displayHeader === '매각손익' || // 추가
+                (displayHeader.includes('용적률') && (!displayHeader.includes('용적률산정용연면적'))) ||
+                displayHeader.includes('용적율');
 
             if (moneyCols.includes(displayHeader)) {
-                
-                config.type = 'numeric'; config.numericFormat = { pattern: '0,0' };
+                config.type = 'numeric';
+                config.numericFormat = { pattern: '0,0' };
             } else if (decimalCols.includes(displayHeader)) {
-                
-                config.renderer = function(instance, td, row, col, prop, value, cellProperties) {
-            // 기본 텍스트 렌더러 적용
-            Handsontable.renderers.TextRenderer.apply(this, arguments);
-            
-            if (value !== null && value !== undefined && value !== "") {
-                const numValue = parseFloat(value);
-                if (!isNaN(numValue)) {
-                    if (isPyungMode) {
-                        // 평으로 변환 (소수점 2자리)
-                        const pyungVal = (numValue * PYUNG_FACTOR).toFixed(2);
-                        td.innerText = pyungVal + " 평";
-                        
-                    } else {
-                        // m2 그대로 표시 (천단위 콤마)
-                        td.innerText = numValue.toLocaleString() + " ㎡";
-                        
+                // ... (기존 평/m2 변환 렌더러 코드 유지) ...
+                config.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+                    Handsontable.renderers.TextRenderer.apply(this, arguments);
+                    if (value !== null && value !== undefined && value !== "") {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            if (isPyungMode) {
+                                const pyungVal = (numValue * PYUNG_FACTOR).toFixed(2);
+                                td.innerText = pyungVal + " 평";
+                            } else {
+                                td.innerText = numValue.toLocaleString() + " ㎡";
+                            }
+                        }
                     }
-                }
-            }
-            td.style.textAlign = 'right'; // 우측 정렬
-        };
+                    td.style.textAlign = 'right';
+                };
             } else if (percentCols) {
-                
-                config.type = 'numeric'; config.numericFormat = { pattern: '00.[00]' };
-                config.renderer = function(instance, td, row, col, prop, value, cellProperties) {
+                config.type = 'numeric';
+                config.numericFormat = { pattern: '00.00' };
+                config.renderer = function (instance, td, row, col, prop, value, cellProperties) {
                     Handsontable.renderers.NumericRenderer.apply(this, arguments);
-                    
-                    if (value !== null && !isNaN(value)){
+
+                    if (value !== null && value !== "" && !isNaN(value)) {
                         const numValue = parseFloat(value);
 
-                        if (numValue < 0) td.style.backgroundColor = "#f58f5f";
-                        else if (numValue > 0) td.style.backgroundColor = "#61b7f4"
-                        else td.style.backgroundColor = '';
-                        
+                        // 수익이면 파란색 계열, 손실이면 주황색 계열
+                        if (numValue < 0) td.style.backgroundColor = "#ffe7d9"; // 연한 주황 (가독성을 위해 파스텔톤 조정)
+                        else if (numValue > 0) td.style.backgroundColor = "#e3f2fd"; // 연한 파랑
+
+                        // 텍스트 색상 강조
+                        if (numValue < 0) td.style.color = "#ef4444";
+                        else if (numValue > 0) td.style.color = "#3b82f6";
+
                         td.innerText += '%';
-                    } 
+                    }
                     else {
                         td.style.backgroundColor = '';
                         td.style.color = '';
                     }
+                    td.style.textAlign = 'right';
                 };
             }
 
-            // 매매가 강조
             if (displayHeader === '매매가(억)') {
-                config.renderer = function(instance, td, row, col, prop, value, cp) {
+                config.renderer = function (instance, td, row, col, prop, value, cp) {
                     Handsontable.renderers.NumericRenderer.apply(this, arguments);
                     td.style.fontWeight = 'bold';
                 };
             }
             return config;
         }
+
 
         function addressRenderer(instance, td, row, col, prop, value, cellProperties) {
             Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -908,7 +1076,17 @@
             // YYYYMMDD -> YYYY-MM-DD
             if (value && String(value).length === 8) {
                 const s = String(value);
-                td.innerText = `${s.substring(0,4)}-${s.substring(4,6)}-${s.substring(6,8)}`;
+                td.innerText = `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
+            } else if (value) {
+                td.innerText = value;
+            }
+        }
+
+        function dateRenderer2(instance, td, row, col, prop, value) {
+            Handsontable.renderers.TextRenderer.apply(this, arguments);
+            if (value && String(value).length === 8) {
+                const s = String(value);
+                td.innerText = `${s.substring(0, 4)}-${s.substring(4, 6)}`;
             } else if (value) {
                 td.innerText = value;
             }
@@ -923,10 +1101,10 @@
             els.paginationContainer.classList.remove('hidden');
         }
         function setupPaginationEvents() {
-            els.btnPrev.addEventListener('click', () => { if(currentPage > 1) fetchData(--currentPage); });
-            els.btnNext.addEventListener('click', () => { 
+            els.btnPrev.addEventListener('click', () => { if (currentPage > 1) fetchData(--currentPage); });
+            els.btnNext.addEventListener('click', () => {
                 const maxPage = Math.ceil(totalRows / ITEMS_PER_PAGE);
-                if(currentPage < maxPage) fetchData(++currentPage); 
+                if (currentPage < maxPage) fetchData(++currentPage);
             });
         }
         async function loadWishlist() {
@@ -934,17 +1112,17 @@
                 const res = await fetch('/api/wishlist');
                 wishlistMap = await res.json();
                 existingGroups.clear();
-                Object.values(wishlistMap).forEach(item => { if(item.group_name) existingGroups.add(item.group_name); });
-            } catch {}
+                Object.values(wishlistMap).forEach(item => { if (item.group_name) existingGroups.add(item.group_name); });
+            } catch { }
         }
-        
+
         // 컬럼 설정 불러오기: 저장된 값은 '노출값(Display Name)' 리스트여야 함
         async function loadColumnSettings() {
             try {
                 const res = await fetch('/api/settings/columns');
                 const data = await res.json();
-                if(data && data.length) savedColumnOrder = data;
-            } catch {}
+                if (data && data.length) savedColumnOrder = data;
+            } catch { }
         }
 
         window.toggleMark = async (address) => {
@@ -953,10 +1131,10 @@
             const group = els.groupNameInput.value;
             try {
                 if (isMarked) {
-                    await fetch('/api/wishlist', { method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ address }) });
+                    await fetch('/api/wishlist', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) });
                     delete wishlistMap[address];
                 } else {
-                    await fetch('/api/wishlist', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ address, color, group_name: group }) });
+                    await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, color, group_name: group }) });
                     wishlistMap[address] = { color, group_name: group };
                     existingGroups.add(group);
                 }
@@ -972,11 +1150,11 @@
             // 화면에 보이는 헤더명(노출값)을 가져오도록 로직 조정 필요.
             // 하지만 Handsontable에서 colHeaders 배열 자체를 재정렬해서 관리하는게 아니라면,
             // 여기서는 colHeaders[visualIndex]를 가져오는게 안전함.
-            
+
             const settings = hot.getSettings();
             const currentHeaders = settings.colHeaders; // 현재 설정된 헤더 배열
-            
-            for(let i=0; i<count; i++) {
+
+            for (let i = 0; i < count; i++) {
                 const visualIndex = hot.toVisualColumn(i); // 물리 인덱스 -> 현재 보이는 인덱스 X
                 // afterColumnMove에서는 변경된 인덱스 정보를 이용해야 함.
                 // 가장 확실한 방법: hot.colHeaders 가 참조가 아니라 값이면 어렵지만,
@@ -984,15 +1162,15 @@
                 const headerText = hot.getColHeader(i); // i번째 보이는 컬럼의 헤더
                 newOrder.push(headerText);
             }
-            
-            try { await fetch('/api/settings/columns', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ columns: newOrder }) }); } catch {}
+
+            try { await fetch('/api/settings/columns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ columns: newOrder }) }); } catch { }
         }
 
         document.getElementById('btnSaveData').addEventListener('click', async () => {
             try {
                 // hot.getSourceData()는 DB컬럼명을 Key로 가진 객체 배열을 반환함 (config.data가 DB컬럼명이므로)
                 // 별도 변환 없이 그대로 전송하면 됨.
-                await fetch('/api/update_data', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(hot.getSourceData()) });
+                await fetch('/api/update_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hot.getSourceData()) });
                 alert("저장되었습니다.");
             } catch { alert("저장 실패"); }
         });
@@ -1002,7 +1180,7 @@
             const dropdown = els.groupDropdown;
             input.addEventListener('focus', () => {
                 dropdown.innerHTML = '';
-                if(existingGroups.size === 0) dropdown.innerHTML = '<div class="p-2 text-gray-400 text-xs">그룹 없음</div>';
+                if (existingGroups.size === 0) dropdown.innerHTML = '<div class="p-2 text-gray-400 text-xs">그룹 없음</div>';
                 else existingGroups.forEach(g => {
                     const div = document.createElement('div');
                     div.className = 'dropdown-item'; div.innerText = g;
@@ -1011,35 +1189,81 @@
                 });
                 dropdown.style.display = 'block';
             });
-            document.addEventListener('click', (e) => { if(!e.target.closest('.group-selector-wrapper')) dropdown.style.display = 'none'; });
+            document.addEventListener('click', (e) => { if (!e.target.closest('.group-selector-wrapper')) dropdown.style.display = 'none'; });
         }
 
         // --- [추가] 엔터키 입력 시 검색 실행 함수 ---
         // --- [수정됨] 엔터키 입력 감지 (이벤트 위임 방식) ---
         function setupEnterKeySearch() {
-            document.addEventListener('keydown', function(e) {
+            document.addEventListener('keydown', function (e) {
                 // 1. 눌린 키가 엔터(Enter)인지 확인
                 if (e.key !== 'Enter') return;
 
                 // 2. 현재 포커스된 요소가 우리가 원하는 입력창들인지 확인
                 const target = e.target;
-                const isSearchInput = 
-                    target.id === 'mainSearchInput' || 
-                    target.id === 'BUNJISearchInput' || 
+                const isSearchInput =
+                    target.id === 'mainSearchInput' ||
+                    target.id === 'BUNJISearchInput' ||
                     target.id === 'selRegionDong' ||
                     target.id === 'detailSelectGrid' ||
-                    target.classList.contains('range-input') || 
+                    target.classList.contains('range-input') ||
                     target.classList.contains('toggle-input');
 
                 // 3. 맞다면 검색 버튼 클릭 강제 실행
                 if (isSearchInput) {
-                    
+
                     e.preventDefault(); // 줄바꿈 방지
                     const btn = document.getElementById('btnMainSearch');
-                    if(btn) btn.click();
+                    if (btn) btn.click();
                 }
             });
         }
+
+        function switchView(viewName) {
+            const tableView = document.getElementById('spreadsheet-view');
+            const mapView = document.getElementById('map-view');
+            const tabTable = document.getElementById('tab-table');
+            const tabMap = document.getElementById('tab-map');
+
+            if (viewName === 'table') {
+                tableView.classList.remove('view-hidden');
+                mapView.classList.add('view-hidden');
+                tabTable.classList.add('active');
+                tabMap.classList.remove('active');
+                if (hot) hot.render();
+            } else {
+                tableView.classList.add('view-hidden');
+                mapView.classList.remove('view-hidden');
+                tabTable.classList.remove('active');
+                tabMap.classList.add('active');
+                setTimeout(() => {
+                    window.dispatchEvent(new Event('resize'));
+                }, 100);
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('filter-sidebar');
+            const icon = document.getElementById('toggle-icon');
+            sidebar.classList.toggle('collapsed');
+            icon.classList.toggle('fa-chevron-left');
+            icon.classList.toggle('fa-chevron-right');
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                if (hot) hot.render();
+            }, 300);
+        }
+
+        // script.js에 정의된 지도 기능을 방해하지 않도록 초기화 유지
+        window.onload = async () => {
+            if (typeof initMap === 'function') initMap();
+            initRegionSelectors();
+            initDetailSelectors();
+            await Promise.all([loadWishlist(), loadColumnSettings()]);
+            setupPaginationEvents();
+            setupEnterKeySearch();
+        };
     </script>
 </body>
+
 </html>

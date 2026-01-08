@@ -52,6 +52,9 @@ def run_luris_exact_logic():
         
         gdf_land.set_crs(CRS_SEOUL_5174, allow_override=True, inplace=True)
         gdf_zone.set_crs(CRS_SEOUL_5174, allow_override=True, inplace=True)
+
+        coords_wgs84 = gdf_land.geometry.representative_point().to_crs("epsg:4326")
+        gdf_land['coordinate'] = coords_wgs84.apply(lambda p: f"{p.y:.7f}, {p.x:.7f}") # 위도, 경도 순
         
         gdf_land['geometry'] = gdf_land['geometry'].buffer(0)
         gdf_zone['geometry'] = gdf_zone['geometry'].buffer(0)
@@ -162,14 +165,15 @@ def run_luris_exact_logic():
             '적용방식': method
         })
 
-    # 6. 결과 산출
+    # 6. 결과 산출 (함수 하단부)
     result_df = gdf_overlay.groupby('PNU').apply(calculate_luris_exact).reset_index()
-    
-    # 원본 정보 병합 (여기서는 결과 테이블 만드는 거라 merge 필요)
-    land_info = gdf_land[['PNU', 'JIBUN', '원본_대지면적']].drop_duplicates('PNU')
+
+    # land_info에 'coordinate' 추가
+    land_info = gdf_land[['PNU', 'JIBUN', '원본_대지면적', 'coordinate']].drop_duplicates('PNU')
     result_df = result_df.merge(land_info, on='PNU', how='left')
-    
-    final_cols = ['PNU', 'JIBUN', '원본_대지면적', '건폐율(토지이음)', '용적률(토지이음)', '산정_층수', '적용방식', '상세내역']
+
+    # final_cols에 'coordinate' 추가
+    final_cols = ['PNU', 'JIBUN', '원본_대지면적', 'coordinate', '건폐율(토지이음)', '용적률(토지이음)', '산정_층수', '적용방식', '상세내역']
     final_df = result_df[final_cols].round({'원본_대지면적': 2})
 
     print(f"   ✅ 최종 산출 완료: {len(final_df):,}개")

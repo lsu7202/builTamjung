@@ -2,83 +2,84 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>부동산 마킹 지도</title>
-    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ client_id }}&callback=initMap&submodules=geocoder"></script>
+    <title>부동산 지도 검색</title>
+    <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId={{ client_id }}&submodules=geocoder,panorama,drawing"></script>
+    <script type="text/javascript" src="https://navermaps.github.io/maps.js.ncp/docs/js/MarkerClustering.js"></script>></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-        
-        /* 그룹핑(폴더) 스타일 */
-        details > summary { list-style: none; cursor: pointer; transition: background 0.2s; }
-        details > summary::-webkit-details-marker { display: none; }
-        details[open] > summary { border-bottom: 1px solid #e5e7eb; }
+        /* 줌 안내 문구 스타일 */
+        #zoom-notice {
+            position: absolute; top: 80px; left: 50%; transform: translateX(-50%);
+            z-index: 20; background: rgba(0,0,0,0.7); color: white;
+            padding: 8px 16px; border-radius: 20px; font-size: 13px;
+            pointer-events: none; display: none;
+        }
+
+        /* 미니 파노라마 스타일 */
+        #pano-wrapper {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 320px; height: 210px;
+            z-index: 50; background: white;
+            border-radius: 12px; border: 2px solid white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+             display: none; /* 초기 숨김 */
+            transition: all 0.3s ease;
+        }
+        /* 확대 모드 */
+        #pano-wrapper.expanded { width: 100%; height: 100%; bottom: 50%; right: 50%; transform: translate(50%, 50%); }
+        #pano-view { width: 100%; height: 100%; }
+
+        .pano-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; z-index: 60; }
+        .pano-btn { width: 30px; height: 30px; background: rgba(0,0,0,0.6); color: white; border-radius: 6px; 
+                   display: flex; align-items: center; justify-content: center; cursor: pointer; }
     </style>
 </head>
-<body class="relative w-full h-full bg-gray-100">
+<body class="relative w-full h-full">
 
     <div id="map" class="absolute inset-0 w-full h-full z-0"></div>
 
-    <div class="absolute top-4 left-4 z-10 w-80 flex flex-col gap-3">
-        <div class="bg-white rounded-lg shadow-lg p-4 border border-gray-200">
-            <div class="flex justify-between items-center mb-3 border-b pb-2">
-                <h1 class="font-bold text-gray-800 text-lg"><i class="fa-solid fa-map-location-dot text-blue-600"></i> 부동산 지도</h1>
-                <button onclick="loadWishlist()" class="text-gray-500 hover:text-blue-600"><i class="fa-solid fa-rotate-right"></i></button>
-            </div>
+    <div class="absolute top-4 left-4 z-10 w-80">
+        <div class="bg-white rounded-lg shadow-lg p-3 border border-gray-200">
             <div class="flex gap-2">
-                <input type="text" id="searchInput" placeholder="주소 검색" class="flex-1 border rounded px-3 py-2 text-sm" onkeypress="if(event.key==='Enter') searchAddress()">
-                <button onclick="searchAddress()" class="bg-blue-600 text-white px-3 rounded"><i class="fa-solid fa-search"></i></button>
+                <input type="text" id="searchInput"
+                       class="flex-1 border rounded px-3 py-2 text-sm focus:outline-blue-500" 
+                       onkeypress="if(event.key==='Enter') searchAddress()">
+                <button onclick="searchAddress()" class="bg-blue-600 text-white px-3 rounded hover:bg-blue-700">
+                    <i class="fa-solid fa-search"></i>
+                </button>
             </div>
         </div>
+    </div>
 
-        <div id="selectedInfo" class="hidden bg-white rounded-lg shadow-lg p-4 border border-gray-200">
-    <div class="flex justify-between items-center mb-2 border-b pb-2">
-        <p class="text-xs text-gray-500 font-bold">선택된 위치</p>
-        <button onclick="openCurrentRoadView()" 
-                class="bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-[11px] px-2 py-1 rounded font-bold transition flex items-center gap-1">
-            <i class="fa-solid fa-street-view"></i> 로드뷰
+    <div class="absolute top-1/2 -translate-y-1/2 right-4 z-10 flex flex-col gap-3">
+        <button onclick="triggerPanoAtMarker()" 
+                class="bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-blue-50 text-blue-600 transition-all group">
+            <i class="fa-solid fa-street-view text-2xl"></i>
+            <span class="absolute right-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">거리뷰</span>
         </button>
-    </div>
 
-    <p id="currentAddress" class="text-sm font-bold text-gray-800 mb-3 break-words"></p>
-    
-    <div class="bg-slate-50 p-3 rounded border mb-3 space-y-2">
-        <div class="flex items-center gap-2">
-            <label class="text-xs font-bold w-10">그룹</label>
-            <input type="text" id="markGroupName" list="existingGroups" placeholder="그룹명 입력" 
-                   class="flex-1 border rounded px-2 py-1 text-xs">
-        </div>
-        <div class="flex items-center gap-2">
-            <label class="text-xs font-bold w-10">색상</label>
-            <input type="color" id="markColorPicker" class="w-6 h-6 border-none bg-transparent cursor-pointer">
-        </div>
-        <div class="pt-2 border-t border-slate-200">
-            <textarea id="markNote" rows="2" placeholder="메모 입력..." class="w-full border rounded px-2 py-1 text-xs resize-none"></textarea>
-        </div>
-    </div>
-    <button onclick="saveCurrentLocation()" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-bold text-sm">
-        <i class="fa-solid fa-star"></i> 저장하기
+        <button id="ruler-btn" onclick="toggleRuler()" class="bg-white p-3 rounded-full shadow-lg border border-gray-200 hover:bg-red-50 text-gray-700 transition-all group">
+        <i class="fa-solid fa-ruler-combined text-xl"></i>
+        <span class="absolute right-14 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity">거리 측정</span>
     </button>
-</div>
     </div>
 
-    <div id="sidePanel" class="absolute top-0 right-0 h-full w-80 bg-white shadow-2xl z-20 flex flex-col border-l transform translate-x-0 transition-transform duration-300">
-        <div class="px-5 py-4 border-b flex justify-between bg-gray-50">
-            <h2 class="font-bold text-gray-700">저장 목록</h2>
-            <span id="countBadge" class="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+    <div id="pano-wrapper">
+        <div class="pano-controls">
+            <div onclick="togglePanoSize()" class="pano-btn"><i id="expand-icon" class="fa-solid fa-expand"></i></div>
+            <div onclick="closePano()" class="pano-btn"><i class="fa-solid fa-xmark"></i></div>
         </div>
-        
-        <div id="wishlistContainer" class="flex-1 overflow-y-auto custom-scroll p-2 space-y-2"></div>
-
-        <button onclick="toggleSidebar()" class="absolute top-1/2 -left-8 w-8 h-14 bg-white border rounded-l-lg shadow-md flex justify-center items-center text-gray-500 hover:text-blue-600">
-            <i id="toggleIcon" class="fa-solid fa-chevron-right"></i>
-        </button>
+        <div id="pano-view"></div>
     </div>
 
-    <datalist id="existingGroups"></datalist>
+    <!-- <div id="zoom-notice" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 20; 
+         background: #3b82f6; color: white; padding: 10px 20px; border-radius: 30px; font-weight: bold; display: none;">
+        지도를 더 확대하면 매물이 나타납니다.
+    </div> -->
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
+    
 </body>
 </html>
