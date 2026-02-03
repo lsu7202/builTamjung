@@ -1,0 +1,20 @@
+# 로컬 가상환경 및 캐시
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# 대용량 데이터 및 로그 (필요시 제외)
+*.csv
+*.xlsx
+*.log
+postgres_data/
+
+# 소스 관리 및 설정
+.git/
+.env
+.dockerignore
+Dockerfile
+docker-compose.yml
+/데이터
+/빌탐정데스크탑

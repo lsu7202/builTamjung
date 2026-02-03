@@ -2,7 +2,6 @@ services:
   flask-web:
     build: .
     container_name: budongsan-data-flask
-    command: gunicorn --worker-class gevent --workers 4 --bind 0.0.0.0:7070 --timeout 120 app:app
     ports:
       - "7070:7070"
     restart: always

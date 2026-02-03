@@ -9,6 +9,7 @@ import orjson
 from flask_migrate import Migrate
 from models import db
 from dotenv import load_dotenv
+from sqlalchemy import inspect
 
 load_dotenv()
 
@@ -35,27 +36,45 @@ Compress(app)
 db.init_app(app)  # Flask 앱과 SQLAlchemy 연결
 migrate = Migrate(app, db)  # Flask-Migrate와 앱, DB 연결
 
+import decimal  # 1. 파일 상단에 decimal 임포트 추가
+
 class OrjsonProvider(JSONProvider):
     def dumps(self, obj, **kwargs):
-        # orjson.dumps는 bytes를 반환하므로 decode가 필요할 수 있음
-        return orjson.dumps(obj, option=orjson.OPT_SERIALIZE_NUMPY).decode('utf-8')
+        def default(item):
+            # Decimal 객체를 발견하면 float으로 변환
+            if isinstance(item, decimal.Decimal):
+                return float(item)
+            raise TypeError(f"Type {type(item)} not serializable")
 
-    def loads(self, s, **kwargs):
-        return orjson.loads(s)
+        return orjson.dumps(
+            obj, 
+            default=default, # 이 부분이 핵심입니다.
+            option=orjson.OPT_SERIALIZE_NUMPY
+        ).decode('utf-8')
 
-    # 이 메서드가 없어서 에러가 발생한 것입니다!
     def response(self, *args, **kwargs):
-        """jsonify()가 호출될 때 실제 HTTP 응답 객체를 만드는 부분입니다."""
-        # 중요: 아래 줄에서 *와 **를 모두 제거해야 합니다.
         obj = self._prepare_response_obj(args, kwargs) 
         
-        # 성능을 위해 bytes 상태 그대로 응답 객체에 전달합니다.
-        dumped_bytes = orjson.dumps(obj, option=orjson.OPT_SERIALIZE_NUMPY)
+        def default(item):
+            if isinstance(item, decimal.Decimal):
+                return float(item)
+            raise TypeError(f"Type {type(item)} not serializable")
+            
+        dumped_bytes = orjson.dumps(
+            obj, 
+            default=default, 
+            option=orjson.OPT_SERIALIZE_NUMPY
+        )
         
         return self._app.response_class(
             dumped_bytes, 
             mimetype="application/json"
         )
+
+    def loads(self, s, **kwargs):
+        return orjson.loads(s)
+
+    
 
 app.json = OrjsonProvider(app)
 app.config['JSON_AS_ASCII'] = False
@@ -95,6 +114,8 @@ FILTER_MAPPING = {
     '용도지역': '용도지역'
 }
 
+
+
 # --- [추가] 날짜 입력 정규화 헬퍼 함수 ---
 def normalize_date(val):
     if not val: return None
@@ -108,51 +129,30 @@ def normalize_date(val):
 def build_where_clause(filters, params):
     where_clauses = []
     
-    keyword = filters.get('keyword', '').strip()
-    sigungu_list = filters.get('sigungu', [])
-    bjd_list = filters.get('bjd', [])
-    bunji = filters.get('bunji', '').strip()
+    # 1. 고유번호 (PNU) 처리 - 리스트 형태 대응 및 LIKE 절 적용
+    pnu_input = filters.get('고유번호', [])
+    
+    # 입력값이 단일 값(문자열/딕셔너리)일 경우를 대비해 리스트로 변환
+    if isinstance(pnu_input, (str, dict)):
+        pnu_input = [pnu_input]
+    
+    pnu_conds = []
+    if pnu_input:
+        for idx, p in enumerate(pnu_input):
+            # 딕셔너리 {'value': '...'} 또는 문자열에서 값 추출
+            val = p.get('value', '') if isinstance(p, dict) else p
+            if val and str(val).strip():
+                p_key = f"pnu_idx_{idx}"
+                # PNU 앞부분만으로도 검색 가능하도록 LIKE 사용 (전방 일치)
+                pnu_conds.append(f'"고유번호" LIKE :{p_key}')
+                params[p_key] = f"{str(val).strip()}%"
+                
+    # 여러 PNU 조건이 들어오면 OR로 묶음 (예: 역삼동 PNU OR 서초동 PNU)
+    if pnu_conds:
+        where_clauses.append(f"({' OR '.join(pnu_conds)})")
+
+    # 2. 상세 조건 (multi_filters)
     multi_filters = filters.get('multi_filters', {})
-    ranges = filters.get('ranges', {})
-    # sales_count 수집
-    sales_count = filters.get('sales_count', 'all')
-    sales_min = None
-    sales_max = None
-
-    if keyword:
-        address_chunks = re.findall(r'[가-힣0-9A-Za-z]+\s+\d+(?:-\d+)?', keyword)
-
-        if address_chunks:
-            addr_conds = []
-            for i, addr in enumerate(address_chunks):
-                p_name = f"multi_addr_{i}"
-                
-                escaped_addr = re.escape(addr.strip())
-                flexible_addr = escaped_addr.replace(r'\ ', r'\s+')
-                
-                addr_conds.append(f'"통합주소" ~ :{p_name}')
-
-                params[p_name] = f"(^|[^0-9]){flexible_addr}([^0-9-]|\Z)"
-            
-            where_clauses.append(f"({' OR '.join(addr_conds)})")
-
-    # 2. 지역
-    if sigungu_list:
-        or_conds = [f'"통합주소" LIKE :si_{i}' for i, v in enumerate(sigungu_list)]
-        where_clauses.append(f"({' OR '.join(or_conds)})")
-        for i, v in enumerate(sigungu_list): params[f'si_{i}'] = f"%{v}%"
-
-    if bjd_list:
-        or_conds = [f'"통합주소" LIKE :bjd_{i}' for i, v in enumerate(bjd_list)]
-        where_clauses.append(f"({' OR '.join(or_conds)})")
-        for i, v in enumerate(bjd_list): params[f'bjd_{i}'] = f"%{v}%"
-
-    # 3. 번지
-    if bunji:
-        where_clauses.append('"통합주소" ~ :bunji_exact')
-        params['bunji_exact'] = f" {bunji}$"
-
-    # 4. 상세 조건
     for key, values in multi_filters.items():
         if values:
             db_col = FILTER_MAPPING.get(key, key)
@@ -163,7 +163,10 @@ def build_where_clause(filters, params):
                 for idx, val in enumerate(clean_values):
                     params[f'multi_{key}_{idx}'] = f"%{val}%"
 
-    # 5. 범위 검색 (날짜 자동 보정 및 매각일 특수 처리 포함)
+    # 3. 범위 검색 (ranges)
+    ranges = filters.get('ranges', {})
+    sales_min = None
+    sales_max = None
     for col_key, val_dict in ranges.items():
         if col_key == '매각일':
             sales_min = normalize_date(val_dict.get('min'))
@@ -173,63 +176,80 @@ def build_where_clause(filters, params):
         db_col = FILTER_MAPPING.get(col_key, col_key)
         is_date_col = col_key in ['사용승인일', '대수선 및 리모델링']
         
-        # MIN (이상)
-        if 'min' in val_dict and str(val_dict['min']).strip():
-            p_min = f"min_{col_key.replace(' ', '_')}"
-            raw_val = val_dict['min']
-            if is_date_col:
-                where_clauses.append(f'"{db_col}" >= :{p_min}')
-                params[p_min] = normalize_date(raw_val)
-            else:
-                try:
-                    where_clauses.append(f'CAST(NULLIF("{db_col}", \'\') AS FLOAT) >= :{p_min}')
-                    params[p_min] = float(raw_val)
-                except:
-                    where_clauses.append(f'"{db_col}" >= :{p_min}')
-                    params[p_min] = raw_val
-        
-        # MAX (이하)
-        if 'max' in val_dict and str(val_dict['max']).strip():
-            p_max = f"max_{col_key.replace(' ', '_')}"
-            raw_val = val_dict['max']
-            if is_date_col:
-                where_clauses.append(f'"{db_col}" <= :{p_max}')
-                params[p_max] = normalize_date(raw_val)
-            else:
-                try:
-                    where_clauses.append(f'CAST(NULLIF("{db_col}", \'\') AS FLOAT) <= :{p_max}')
-                    params[p_max] = float(raw_val)
-                except:
-                    where_clauses.append(f'"{db_col}" <= :{p_max}')
-                    params[p_max] = raw_val
+        # MIN/MAX 처리 (기존 로직 유지)
+        for bound in ['min', 'max']:
+            if bound in val_dict and str(val_dict[bound]).strip():
+                p_key = f"{bound}_{col_key.replace(' ', '_')}"
+                raw_val = val_dict[bound]
+                operator = ">=" if bound == 'min' else "<="
+                
+                if is_date_col:
+                    where_clauses.append(f'"{db_col}" {operator} :{p_key}')
+                    params[p_key] = normalize_date(raw_val)
+                else:
+                    try:
+                        # 1. 일단 파이썬에서 숫자로 바꿉니다 (필터값 검증)
+                        val_float = float(raw_val)
+                        params[p_key] = val_float
+                        
+                        # 2. 성능 최적화 비교 로직
+                        if bound == 'min' and val_float == 0:
+                            # CAST 안 쓰고 컬럼 그대로 사용 (인덱스 활용)
+                            # min이 0일 때만 NULL인 데이터를 포함시킴
+                            where_clauses.append(f'("{db_col}" >= :{p_key} OR "{db_col}" IS NULL)')
+                        else:
+                            # 일반적인 경우에는 그냥 비교 (이것도 인덱스 탐)
+                            where_clauses.append(f'"{db_col}" {operator} :{p_key}')
+                            
+                    except (ValueError, TypeError):
+                        # 숫자가 아니면 어쩔 수 없이 원래 문자열대로 처리
+                        where_clauses.append(f'"{db_col}" {operator} :{p_key}')
+                        params[p_key] = raw_val
 
-    # 6. 매각일 및 매각 회수 복합 로직
+    # app.py 내 build_where_clause 함수의 매각 관련 로직 수정 (약 183행 부근)
+
+    # 4. 매각일 및 매각 회수 복합 로직
+    sales_count = filters.get('sales_count', 'all')
     if sales_min or sales_max or sales_count != 'all':
         sales_conds = []
-        # 회수 필터링 (1, 2, 3회)
-        if sales_count == '3':
-            sales_conds.append("(\"매각일1\" != '' AND \"매각일2\" != '' AND \"매각일3\" != '')")
-        elif sales_count == '2':
-            sales_conds.append("(\"매각일1\" != '' AND \"매각일2\" != '' AND (\"매각일3\" = '' OR \"매각일3\" IS NULL))")
-        elif sales_count == '1':
-            sales_conds.append("(\"매각일1\" != '' AND (\"매각일2\" = '' OR \"매각일2\" IS NULL) AND (\"매각일3\" = '' OR \"매각일3\" IS NULL))")
         
-        # 매각일 범위 (OR 조건: 1, 2, 3 중 하나라도 걸리면 조회)
+        # [수정] 빈 문자열('') 대신 IS NOT NULL / IS NULL 사용
+        if sales_count in ['1', '2', '3']:
+            if sales_count == '3':
+                # 3회 매각: 1, 2, 3 모두 존재
+                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NOT NULL AND \"매각일3\" IS NOT NULL)")
+            elif sales_count == '2':
+                # 2회 매각: 1, 2는 있고 3은 없음
+                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NOT NULL AND \"매각일3\" IS NULL)")
+            elif sales_count == '1':
+                # 1회 매각: 1만 있고 2, 3은 없음
+                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NULL AND \"매각일3\" IS NULL)")
+        
         if sales_min or sales_max:
             range_parts = []
             for col in ["매각일1", "매각일2", "매각일3"]:
                 p_parts = []
+                # [수정] DB 컬럼이 Integer이므로 비교 값을 int()로 변환하여 전달
                 if sales_min:
-                    p_parts.append(f'"{col}" >= :s_min'); params['s_min'] = sales_min
+                    p_parts.append(f'"{col}" >= :s_min')
+                    params['s_min'] = int(sales_min) 
                 if sales_max:
-                    p_parts.append(f'"{col}" <= :s_max'); params['s_max'] = sales_max
+                    p_parts.append(f'"{col}" <= :s_max')
+                    params['s_max'] = int(sales_max)
                 range_parts.append(f"({' AND '.join(p_parts)})")
             sales_conds.append(f"({' OR '.join(range_parts)})")
         
         if sales_conds:
             where_clauses.append(f"({' AND '.join(sales_conds)})")
 
-    return " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
+    # --- 핵심 변경 사항: 조건이 없으면 무조건 0건 반환 ---
+    if where_clauses:
+        return " WHERE " + " AND ".join(where_clauses)
+    else:
+        # PNU 포함 어떤 조건도 없을 경우 쿼리가 데이터를 찾지 못하도록 강제
+        return " WHERE 1=0"
+
+
 
 # --- 라우트 정의 ---
 
@@ -245,6 +265,10 @@ def map_view():
 def panorama_view():
     return render_template('panorama.html', client_id=NAVER_CLIENT_ID)
 
+@app.route('/image')
+def image_view():
+    return render_template('image.html')
+
 # --- API 1: 데이터 조회 (테이블 표시용) ---
 @app.route('/api/get_data', methods=['POST'])
 def get_data():
@@ -252,18 +276,40 @@ def get_data():
     page = req.get('page', 1)
     limit = req.get('limit', 100)
     offset = (page - 1) * limit
+
+    # 정렬 파라미터 추출 (기본값 '주소')
+    sort_col = req.get('sort_column', '주소')
+    sort_order = req.get('sort_order', 'ASC')
     
     params = {}
     where_sql = build_where_clause(req, params)
+
+    # 정렬 SQL 생성
+    if sort_col == '주소':
+        # "고유번호"(PNU)는 본번과 부번이 0019, 0001 처럼 4자리 숫자로 채워져 있어
+        # 사전식 정렬을 하더라도 결과적으로 숫자의 크기순(자연어 정렬)으로 정렬됩니다.
+        # 시군구 및 법정동 코드도 포함되어 있어 지역별 그룹화 정렬도 동시에 해결됩니다.
+        order_by_sql = 'ORDER BY "고유번호" ASC NULLS LAST'
+    elif sort_col == '규모':
+        order_by_sql = 'ORDER BY (COALESCE("규모지상", 0) + COALESCE("규모지하", 0)) DESC'
+    else:
+        db_col = FILTER_MAPPING.get(sort_col, sort_col)
+        order_by_sql = f'ORDER BY "{db_col}" {sort_order} NULLS LAST'
     
     try:
         with engine.connect() as conn:
-            # 총 개수
+            # 전체 개수 확인
             count_sql = f"SELECT COUNT(*) FROM {TABLE_NAME}" + where_sql
             total_count = conn.execute(text(count_sql), params).scalar()
 
-            # 데이터 조회
-            data_sql = f"SELECT *, ctid FROM {TABLE_NAME}" + where_sql + " LIMIT :limit OFFSET :offset"
+            # 정렬 및 페이징이 포함된 데이터 조회
+            data_sql = f"""
+                SELECT *, ctid 
+                FROM {TABLE_NAME} 
+                {where_sql} 
+                {order_by_sql} 
+                LIMIT :limit OFFSET :offset
+            """
             params['limit'] = limit
             params['offset'] = offset
             
@@ -292,36 +338,71 @@ def get_map_data():
         "minY": bounds['minY'], "maxY": bounds['maxY']
     }
 
-    # 1. 기존 필터(매매가, 면적 등) WHERE 절 생성
-    # build_where_clause 함수는 이미 app.py 상단에 정의되어 있음
+    # 필터 WHERE 절 생성 (조건 없으면 WHERE 1=0 반환됨)
     where_sql = build_where_clause(req, params)
 
-    # 2. 공간 검색 조건(Bounds) 추가
+    # 공간 검색 조건 결합
     spatial_cond = "geom && ST_MakeEnvelope(:minX, :minY, :maxX, :maxY, 4326)"
     
-    if where_sql:
-        # 이미 WHERE가 있으면 AND로 결합
-        final_sql = f"{where_sql} AND {spatial_cond}"
-    else:
-        # 필터가 없으면 WHERE 공간조건만
-        final_sql = f" WHERE {spatial_cond}"
+    # [수정] WHERE 절이 이미 존재하므로 AND로 결합
+    final_sql = f"{where_sql} AND {spatial_cond}"
 
-    # 3. 쿼리 실행 (성능을 위해 필요한 컬럼만 추출, LIMIT 상향)
-    sql = text(f"""
-        SELECT "x", "y", "통합주소" 
-        FROM {TABLE_NAME} 
-        {final_sql}
-        LIMIT 3000 
+    sql_query = f"SELECT x, y, \"주소\" FROM {TABLE_NAME} {final_sql} LIMIT 3000"
+    
+    # --- [디버깅 로그] 터미널에서 확인 가능 ---
+    app.logger.info("=== [MAP DATA QUERY] ===")
+    app.logger.info(f"Generated SQL: {sql_query}")
+    app.logger.info(f"Parameters: {params}")
+    # ---------------------------------------
+
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(sql_query), params)
+            points = [{"x": row[0], "y": row[1], "addr": row[2]} for row in result.fetchall()]
+            return jsonify(points)
+    except Exception as e:
+        app.logger.error(f"Map Data SQL Error: {e}")
+        return jsonify([]), 500
+
+@app.route('/api/get_propDetail', methods=['POST'])   
+def get_propDetail_data():
+    req = request.json
+    fulladdr = req.get('통합주소')
+
+    if not fulladdr:
+        return jsonify({"success": False, "message": "주소가 제공되지 않았습니다."}), 400
+
+    # LIMIT 1을 제거하고 통합주소가 일치하는 모든 행을 가져옵니다.
+    # 층별로 정렬(ORDER BY)을 추가하면 데이터 활용이 더 편리합니다.
+    sql = text("""
+        SELECT *
+        FROM prop_details
+        WHERE "통합주소" = :addr
+        ORDER BY "층" ASC
     """)
 
     try:
         with engine.connect() as conn:
-            result = conn.execute(sql, params)
-            points = [{"x": row[0], "y": row[1], "addr": row[2]} for row in result.fetchall()]
-            return jsonify(points)
+            result = conn.execute(sql, {"addr": fulladdr})
+            # 모든 행을 가져옵니다.
+            rows = result.fetchall()
+            
+            if rows:
+                # 모든 행을 리스트 형태의 딕셔너리로 변환
+                # - 사용자 제공 ppt_logic.js 내의 데이터 구조 참조
+                data_list = [dict(row._mapping) for row in rows]
+                return jsonify({
+                    "success": True, 
+                    "count": len(data_list),
+                    "data": data_list
+                })
+            else:
+                return jsonify({"success": False, "message": "해당 주소의 상세 정보를 찾을 수 없습니다."}), 404
+
     except Exception as e:
-        app.logger.error(f"Map Filter API Error: {e}")
-        return jsonify([]), 500
+        print(f"Error fetching property details: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+            
     
 # app.py 의 해당 API 부분 수정
 @app.route('/api/bulk_update_sales_by_address', methods=['POST'])
@@ -477,12 +558,30 @@ def update_price_by_address():
     except Exception as e:
         app.logger.error(f"Bulk Update Error: {e}")
         return jsonify({"error": str(e)}), 500
+    
+    
+def get_table_columns():
+    """DB에서 실제 테이블의 컬럼 리스트를 가져오는 헬퍼 함수"""
+    try:
+        inspector = inspect(engine)
+        return set(col['name'] for col in inspector.get_columns(TABLE_NAME))
+    except Exception as e:
+        app.logger.error(f"Error fetching columns: {e}")
+        return set()
 
-# --- API 4: 기존 데이터 업데이트 (그리드 수정용) ---
+VALID_DB_COLUMNS = get_table_columns()
+
 @app.route('/api/update_data', methods=['POST'])
 def update_data():
     data_list = request.json
     if not data_list: return jsonify({"error": "No data"}), 400
+    
+    # 만약 서버 실행 중 테이블 구조가 바뀌었을 수 있으므로 
+    # VALID_DB_COLUMNS가 비어있다면 다시 가져오게 할 수 있습니다.
+    global VALID_DB_COLUMNS
+    if not VALID_DB_COLUMNS:
+        VALID_DB_COLUMNS = get_table_columns()
+
     try:
         with engine.begin() as conn:
             for row in data_list:
@@ -490,6 +589,7 @@ def update_data():
                 if not ctid: continue
                 row.pop('통합주소', None) 
                 
+                # --- [추가/수정] 매매가 관련 계산 로직 유지 ---
                 if '매매가억' in row:
                     try:
                         price_val = str(row.get('매매가억')).replace(',', '').strip()
@@ -501,13 +601,25 @@ def update_data():
                         row['매매가억'] = price
                     except: pass
 
-                set_clauses = [f'"{k}" = :{k}' for k in row.keys()]
-                if not set_clauses: continue
+                # --- [핵심 수정] DB에 실제 존재하는 컬럼만 필터링 ---
+                # row의 키들 중 VALID_DB_COLUMNS에 있는 것만 추출
+                filtered_row = {k: v for k, v in row.items() if k in VALID_DB_COLUMNS}
+                
+                if not filtered_row: continue
+
+                # SET 구문 생성 (필터링된 결과 사용)
+                set_clauses = [f'"{k}" = :{k}' for k in filtered_row.keys()]
                 query = text(f"UPDATE {TABLE_NAME} SET {', '.join(set_clauses)} WHERE ctid = :ctid")
-                row['ctid'] = ctid
-                conn.execute(query, row)
+                
+                # 쿼리 실행용 파라미터 구성
+                params = filtered_row.copy()
+                params['ctid'] = ctid
+                
+                conn.execute(query, params)
+                
         return jsonify({"status": "success"})
     except Exception as e:
+        app.logger.error(f"Update Data API Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 # --- API 5: 위시리스트 관리 ---
@@ -620,6 +732,49 @@ def get_floors():
         app.logger.error(f"Fetch Floor Info Error: {e}")
         return jsonify({"error": str(e)}), 500
     
+
+# app.py 내 save_property API 수정
+@app.route('/api/save_property', methods=['POST'])
+def save_property():
+    data = request.get_json()
+    address = data.get('address')
+    floors = data.get('floors')
+
+    if not address:
+        return jsonify({"error": "주소가 없습니다."}), 400
+
+    try:
+        with engine.begin() as conn: # engine.begin()은 자동 커밋을 지원합니다.
+            # 1. 기존 이 주소로 등록된 매물 상세 정보를 모두 삭제 (새로 고침 방식)
+            # 수동 추가 방식이므로, 기존 데이터를 지우고 현재 화면의 데이터를 넣는 것이 가장 깔끔합니다.
+            conn.execute(text("DELETE FROM prop_details WHERE \"통합주소\" = :address"), {"address": address})
+
+            # 2. 새로운 데이터 삽입
+            if floors:
+                insert_sql = text("""
+                    INSERT INTO prop_details 
+                    ("통합주소", "층", "형태", "평수", "보증금", "임대료", "월관리비", "임대차기간", "정렬층")
+                    VALUES (:address, :floor, :type, :area, :security, :rent, :management, :lease_period, NULL)
+                """)
+                
+                for item in floors:
+                    conn.execute(insert_sql, {
+                        "address": address,
+                        "floor": item['floor'],
+                        "type": item['type'],
+                        "area": item['area'] or 0,
+                        "security": item['security'] or 0,
+                        "rent": item['rent'] or 0,
+                        "management": item['management'] or 0,
+                        "lease_period": item['lease_period'] or ""
+                    })
+
+        return jsonify({"status": "success", "message": "성공적으로 저장되었습니다."}), 200
+
+    except Exception as e:
+        app.logger.error(f"Save Property Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=7070, debug=True)

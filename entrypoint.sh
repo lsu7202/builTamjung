@@ -1,19 +1,19 @@
 #!/bin/sh
+set -e
 
-# 1. DB가 준비될 때까지 잠시 대기 (선택사항)
-sleep 3
+# DB 대기 로직
+echo "Waiting for Postgres at $DB_HOST:$DB_PORT..."
+until pg_isready -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER"; do
+  sleep 2
+done
 
-# 2. 마이그레이션 폴더가 없으면 초기화 (처음 한 번만 실행됨)
-if [ ! -d "migrations" ]; then
-    flask db init
+# 💡 핵심: migrations 폴더가 있을 때만 upgrade 실행
+if [ -d "/app/migrations" ]; then
+    echo "Found migrations folder, applying upgrade..."
+    flask db upgrade
+else
+    echo "Migrations folder not found. Skipping upgrade."
 fi
 
-# 3. 모델 변경사항을 감지해서 마이그레이션 파일 생성
-# (실제 운영 환경에서는 migrate는 로컬에서 하고 upgrade만 자동화하는 게 안전하긴 함)
-flask db migrate -m "auto migration" || echo "No changes to migrate"
-
-# 4. DB를 최신 모델 상태로 업그레이드 (데이터 유지하며 컬럼 추가)
-flask db upgrade
-
-# 5. 원래 실행하려던 Flask 앱(Gunicorn) 실행
+# 원래 실행하려던 CMD(Gunicorn) 실행
 exec "$@"

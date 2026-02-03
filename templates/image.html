@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>빌탐정 PPT 관리</title>
+    <style>
+        :root {
+            --main-blue: #004DA0;
+        }
+
+        body {
+            font-family: '나눔고딕', sans-serif;
+            background: #f4f7fa;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* 주소 입력 섹션 스타일 */
+        .reg-address-input {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 25px;
+            align-items: center;
+            background: #eef2f6;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        #address-Input {
+            flex: 1;
+            /* 가용한 너비를 모두 채움 */
+            max-width: 400px;
+            height: 40px;
+            padding: 0 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        #address-Input:focus {
+            border-color: var(--main-blue);
+            box-shadow: 0 0 0 2px rgba(0, 77, 160, 0.1);
+        }
+
+        #address-btn {
+            height: 40px;
+            background: var(--main-blue);
+            color: white;
+            padding: 0 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        #address-btn:hover {
+            background: #003a7a;
+        }
+
+        #address-btn::after {
+            content: "주소 조회";
+            /* 버튼 내 텍스트 추가 */
+        }
+
+        .section {
+            border-bottom: 1px solid #eee;
+            padding: 20px 0;
+        }
+
+        h3 {
+            color: var(--main-blue);
+            margin-bottom: 15px;
+        }
+
+        /* 세로로 긴 직사각형 비율의 캔버스 영역 */
+        #canvasWrapper {
+            position: relative;
+            width: 300px;
+            height: 473.6px;
+            background: #eee;
+            margin: 10px 0;
+            overflow: hidden;
+            border: 1px solid #ccc;
+        }
+
+        #buildingCanvas {
+            cursor: move;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .preview-item {
+            width: 100%;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+            border: 1px solid #ddd;
+        }
+
+        button {
+            background: var(--main-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #generatePpt {
+            width: 100%;
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+    /* 마우스를 올렸을 때 (Hover) */
+    #generatePpt:hover {
+        background-color: #344a8d; /* 조금 더 밝은 파란색으로 변경 */
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* 그림자 강화 */
+        transform: translateY(-2px); /* 살짝 위로 떠오르는 효과 */
+    }
+
+    /* 눌렀을 때 (Active) */
+    #generatePpt:active {
+        background-color: #1e2d5e; /* 더 어두운 파란색 */
+        transform: translateY(1px); /* 다시 살짝 내려가는 효과 */
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 그림자 축소 */
+    }
+
+    /* 포커스 되었을 때 (Accessibility) */
+    #generatePpt:focus {
+        box-shadow: 0 0 0 3px rgba(38, 57, 119, 0.4); /* 버튼 주변에 은은한 테두리 */
+    }
+
+    /* 비활성화 상태 (버튼 클릭 후 생성 중일 때 등) */
+    #generatePpt:disabled {
+        background-color: #25ea17;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+
+        /* 기존 .slide-preview-box 찾아서 아래 수치로 변경 */
+        .slide-preview-box {
+            position: relative;
+            width: 800px;
+            /* 10인치 x 80 */
+            height: 554px;
+            /* 6.92인치 x 80 (기존 600px에서 변경) */
+            background: white;
+            border: 2px solid #333;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            /* 영역 밖 슬라이더 숨김 */
+        }
+
+        #mapPreview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .map-edit-canvas {
+            border: 1px dashed #004DA0;
+            cursor: move;
+            background: #f9f9f9;
+        }
+
+        .editor-item-wrapper {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 슬라이더 스타일링 */
+        input[type=range] {
+            display: block;
+            margin-top: 2px;
+        }
+
+        /* 안내 문구 */
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="reg-address-input">
+            <input type="text" id="address-Input" class="font-bold">
+            <button id="address-btn"></button>
+        </div>
+
+
+        <div class="section">
+            <h3>01 건물개요</h3>
+            <input type="file" id="buildingImgInput" accept="image/*" onchange="handleImageUpload(event)">
+            <div id="canvasWrapper">
+                <canvas id="buildingCanvas" width="900" height="1420.8"></canvas>
+            </div>
+            <input type="range" id="zoomRange" min="0.1" max="3" step="0.01" value="1" style="width:300px;">
+            <p style="font-size:12px; color:#666;"></p>
+        </div>
+
+        <div class="section">
+            <h3>02 위치도</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'map1')">
+                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'map2')">
+            </div>
+            <div id="mapPreview" class="slide-preview-box" style="display: block; margin: 0 auto; position: relative;">
+                <p id="mapPlaceholder" style="text-align:center; margin-top:250px; color:#ccc;">위치도 이미지 2개를 업로드하세요.</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>03 매물사진</h3>
+            <p class="info-text"></p>
+            <input type="file" id="roomImgsInput" accept="image/*" multiple onchange="handleMultiUpload(event, 'room')">
+            <div id="roomPreview">
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>05 건축물정보 / 06 토지이용계획</h3>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'buildInfo')">
+                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'landPlan')">
+            </div>
+
+            <div id="splitPreview" class="slide-preview-box">
+                <div
+                    style="position: absolute; left: 400px; top: 0; width: 2px; height: 100%; background: #004DA0; z-index: 10;">
+                </div>
+                <p id="splitPlaceholder" style="text-align:center; margin-top:250px; color:#ccc;">이미지를 업로드하면 좌우로 배치됩니다.
+                </p>
+            </div>
+        </div>
+
+
+
+        <button id="generatePpt" class="btn-generate">자료생성</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="{{ url_for('static', filename='ppt_logic.js') }}"></script>
+
+    <script>
+
+        document.getElementById('address-Input').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 폼 제출 방지
+                document.getElementById('address-btn').click();
+            }
+        });
+    </script>
+</body>
+
+</html>
