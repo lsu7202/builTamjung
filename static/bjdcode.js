@@ -511,7 +511,7 @@ function formatBunji(bunjiStr) {
 /**
  * 주소 문자열을 PNU 리스트로 변환 (최종 최적화 버전)
  */
-function convertAddressToPNU(input) {
+export function convertAddressToPNU(input) {
     if (!input || !input.trim()) return [];
 
     const addrInputs = input.split(/,|\n/).map(s => s.trim()).filter(s => s);

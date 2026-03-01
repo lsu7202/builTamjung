@@ -631,5 +631,23 @@ function moveToLocation(lat, lng) {
     }
 }
 
+async function loadSessionInfo() {
+    try {
+        const response = await fetch('/api/get_session');
+        const rs = await response.json();
+
+        if (rs.logged_in) {
+            
+            console.log("세션 정보 로드 성공:", rs);
+            return rs;
+        } else {
+            console.log("로그인되지 않은 상태입니다.");
+        }
+    } catch (error) {
+        console.error("세션 정보를 가져오는 중 오류 발생:", error);
+    }
+}
+
+
 
 

@@ -1,13 +1,14 @@
-import os, re
+import os, re, datetime
 import logging
 import json
-from flask import Flask, render_template, request, jsonify
+# app.py 상단 임포트 부분
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from sqlalchemy import create_engine, text
 from flask_compress import Compress  # 추가: Gzip 압축
 from flask.json.provider import JSONProvider
 import orjson
 from flask_migrate import Migrate
-from models import db
+from models import db, Users, Team, PropMemo, PropMain, setup_db_triggers
 from dotenv import load_dotenv
 from sqlalchemy import inspect
 
@@ -29,6 +30,7 @@ TABLE_NAME = os.getenv('TABLE_NAME', "seoul_land_info")
 DB_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 app = Flask(__name__)
+app.secret_key = 'builtamjung_secret_key_1234'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DB_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -90,6 +92,13 @@ engine = create_engine(
     pool_recycle=1800,       # 30분마다 연결 재설정 (DB 연결 끊김 방지)
     pool_pre_ping=True       # 연결 유효성 자동 체크
 )
+
+with app.app_context():
+    try:
+        setup_db_triggers(engine)
+        logging.info("DB 트리거가 성공적으로 설정되었습니다.")
+    except Exception as e:
+        logging.error(f"DB 트리거 설정 중 오류 발생: {e}")
 
 # --- 필터 매핑 상수 ---
 FILTER_MAPPING = {
@@ -257,13 +266,9 @@ def build_where_clause(filters, params):
 def index():
     return render_template('index.html', client_id=NAVER_CLIENT_ID)
 
-@app.route('/map')
-def map_view():
-    return render_template('map.html', client_id=NAVER_CLIENT_ID)
-
-@app.route('/panorama')
-def panorama_view():
-    return render_template('panorama.html', client_id=NAVER_CLIENT_ID)
+@app.route('/auth')
+def auth():
+    return render_template('auth.html')
 
 @app.route('/image')
 def image_view():
@@ -363,45 +368,208 @@ def get_map_data():
     except Exception as e:
         app.logger.error(f"Map Data SQL Error: {e}")
         return jsonify([]), 500
+    
+# app.py에 추가 또는 수정
+
+from sqlalchemy import func
+
+@app.route('/api/get_prop_main', methods=['GET'])
+def get_prop_main():
+    pnu = request.args.get('고유번호')
+    if not pnu:
+        return jsonify({"message": "PNU가 필요합니다."}), 400
+
+    prop = PropMain.query.filter_by(pnu=pnu).first()
+    
+    # 일치하는 데이터가 없는 경우
+    if not prop:
+        # DB에서 현재 가장 큰 ID 값을 가져옴 (없으면 0)
+        max_id = db.session.query(func.max(PropMain.id)).scalar() or 0
+        next_id = max_id + 1
+        
+        return jsonify({
+            "success": True, 
+            "data": {
+                "매물번호": next_id, # 새로 추가될 때 부여될 번호
+                "고유번호": pnu,
+                "신규등록": True # 프론트엔드에서 신규 여부를 판단하기 위한 플래그
+            },
+            "message": "등록된 정보가 없어 신규 번호를 할당했습니다."
+        }), 200
+
+    # 기존 데이터가 있는 경우 (모델 필드명을 한글 키값으로 매핑)
+    result = {
+        "매물번호": prop.id,
+        "고유번호": prop.pnu,
+        "담당자": prop.manager_Id,
+        "진행상태": prop.progress,
+        "매매가억": float(prop.sale_price_billon) if prop.sale_price_billon else None,
+        "대지면적평단가": float(prop.sale_price_by_land_area) if prop.sale_price_by_land_area else None,
+        "연면적평단가": float(prop.sale_price_by_floor_area) if prop.sale_price_by_floor_area else None,
+        "총보증금": float(prop.total_security) if prop.total_security else None,
+        "총월세부가세별도": float(prop.total_monthly_rent) if prop.total_monthly_rent else None,
+        "총관리비": float(prop.total_management_fee) if prop.total_management_fee else None,
+        "수익률": prop.yield_rate,
+        "공실제외수익률": prop.except_empty_yield,
+        "자기자본수익률": prop.self_yield,
+        "긴급도": prop.urgency,
+        "등급": prop.grade,
+        "입지": prop.location_quality,
+        "건물용도": prop.building_usage,
+        "사진": prop.photo,
+        "브리핑": prop.briefing,
+        "명도": prop.eviction,
+        "멸실": prop.demolition,
+        "용도변경": prop.usage_change,
+        "소유자타입": prop.ownertype,
+        "소유자명": prop.owner_name,
+        "전화번호": prop.contact,
+        "성향": prop.inclination,
+        "관계": prop.relationship,
+        "접수일": prop.proped_date.isoformat() if prop.proped_date else None,
+        "영상번호분초": prop.video_timestamp,
+        "매수의향서": prop.intent_to_buy,
+        "memo": prop.memo,
+        "빌탐정광고등록유무": prop.toad_ad
+    }
+    return jsonify({"success": True, "data": result}), 200
+
+@app.route('/api/save_prop_main', methods=['POST'])
+def save_prop_main():
+    data = request.get_json()
+    pnu = data.get('고유번호')
+    if not pnu:
+        return jsonify({"message": "PNU는 필수입니다."}), 400
+
+    # 기존 데이터가 있는지 확인 (있으면 수정, 없으면 생성)
+    prop = PropMain.query.filter_by(pnu=pnu).first()
+    if not prop:
+        prop = PropMain(pnu=pnu)
+        db.session.add(prop)
+
+    try:
+        # 데이터 업데이트 (JS에서 보낸 한글 키를 모델 필드에 매칭)
+        prop.manager_Id = data.get('담당자')
+        prop.progress = data.get('진행상태')
+        prop.sale_price_billon = data.get('매매가억')
+        prop.sale_price_by_land_area = data.get('대지면적평단가')
+        prop.sale_price_by_floor_area = data.get('연면적평단가')
+        prop.total_security = data.get('총보증금')
+        prop.total_monthly_rent = data.get('총월세부가세별도')
+        prop.total_management_fee = data.get('총관리비')
+        prop.yield_rate = data.get('수익률')
+        prop.except_empty_yield = data.get('공실제외수익률')
+        prop.self_yield = data.get('자기자본수익률')
+        prop.urgency = data.get('긴급도')
+        prop.grade = data.get('등급')
+        prop.location_quality = data.get('입지')
+        prop.building_usage = data.get('건물용도')
+        prop.photo = data.get('사진')
+        prop.briefing = data.get('브리핑')
+        prop.eviction = data.get('명도')
+        prop.demolition = data.get('멸실')
+        prop.usage_change = data.get('용도변경')
+        prop.ownertype = data.get('소유자타입')
+        prop.owner_name = data.get('소유자명')
+        prop.contact = data.get('전화번호')
+        prop.inclination = data.get('성향')
+        prop.relationship = data.get('관계')
+        prop.video_timestamp = data.get('영상번호분초')
+        prop.intent_to_buy = data.get('매수의향서')
+        prop.memo = data.get('memo')
+        prop.toad_ad = data.get('빌탐정광고등록유무')
+        
+        # 날짜 처리
+        if data.get('접수일'):
+            prop.proped_date = datetime.strptime(data.get('접수일'), '%Y-%m-%d').date()
+
+        db.session.commit()
+        return jsonify({"success": True, "message": "저장 완료"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route('/api/get_propDetail', methods=['POST'])   
 def get_propDetail_data():
     req = request.json
-    fulladdr = req.get('통합주소')
+    pnu_val = req.get('고유번호')
 
-    if not fulladdr:
-        return jsonify({"success": False, "message": "주소가 제공되지 않았습니다."}), 400
+    if not pnu_val:
+        return jsonify({"success": False, "message": "고유번호가 제공되지 않았습니다."}), 400
 
-    # LIMIT 1을 제거하고 통합주소가 일치하는 모든 행을 가져옵니다.
-    # 층별로 정렬(ORDER BY)을 추가하면 데이터 활용이 더 편리합니다.
+    # 1. LIMIT 1을 추가하여 단 한 개의 행만 가져옵니다.
+    # 2. ORDER BY를 통해 '가장 정확한(대표적인)' 데이터가 위로 오게 정렬합니다.
     sql = text("""
         SELECT *
         FROM prop_details
-        WHERE "통합주소" = :addr
-        ORDER BY "층" ASC
+        WHERE "고유번호" = :pnu
+        ORDER BY "층" ASC, "id" ASC
+        LIMIT 1
     """)
 
     try:
         with engine.connect() as conn:
-            result = conn.execute(sql, {"addr": fulladdr})
-            # 모든 행을 가져옵니다.
-            rows = result.fetchall()
+            # 변수명을 :pnu와 일치시킵니다. (기존 addr -> pnu_val)
+            result = conn.execute(sql, {"pnu": pnu_val})
+            row = result.fetchone() # 하나만 가져올 때는 fetchone()이 효율적입니다.
             
-            if rows:
-                # 모든 행을 리스트 형태의 딕셔너리로 변환
-                # - 사용자 제공 ppt_logic.js 내의 데이터 구조 참조
-                data_list = [dict(row._mapping) for row in rows]
+            if row:
+                # 단일 행을 딕셔너리로 변환
+                data = dict(row._mapping)
                 return jsonify({
                     "success": True, 
-                    "count": len(data_list),
-                    "data": data_list
+                    "data": data
                 })
             else:
-                return jsonify({"success": False, "message": "해당 주소의 상세 정보를 찾을 수 없습니다."}), 404
+                return jsonify({"success": False, "message": "해당 고유번호의 정보를 찾을 수 없습니다."}), 404
 
     except Exception as e:
         print(f"Error fetching property details: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
+    
+# app.py 내 save_property API 수정
+@app.route('/api/save_property', methods=['POST'])
+def save_property():
+    data = request.get_json()
+    pnu = data.get('고유번호')
+    floors = data.get('floors')
+
+    if not pnu:
+        return jsonify({"error": "주소가 없습니다."}), 400
+
+    try:
+        with engine.begin() as conn: # engine.begin()은 자동 커밋을 지원합니다.
+            # 1. 기존 이 주소로 등록된 매물 상세 정보를 모두 삭제 (새로 고침 방식)
+            # 수동 추가 방식이므로, 기존 데이터를 지우고 현재 화면의 데이터를 넣는 것이 가장 깔끔합니다.
+            conn.execute(text("DELETE FROM prop_details WHERE \"고유번호\" = :pnu"), {"pnu": pnu})
+
+            # 2. 새로운 데이터 삽입
+            if floors:
+                insert_sql = text("""
+                    INSERT INTO prop_details 
+                    ("고유번호", "층", "형태", "평수", "보증금", "임대료", "월관리비", "임대차기간", "공실유무")
+                    VALUES (:pnu, :floor, :type, :area, :security, :rent, :management, :lease_period, :isEmpty)
+                """)
+                
+                for item in floors:
+                    conn.execute(insert_sql, {
+                        "pnu": pnu,
+                        "floor": item['floor'],
+                        "type": item['type'],
+                        "area": item['area'] or 0,
+                        "security": item['security'] or 0,
+                        "rent": item['rent'] or 0,
+                        "management": item['management'] or 0,
+                        "lease_period": item['lease_period'] or "",
+                        "isEmpty": item['isEmpty'] or True
+                    })
+
+        return jsonify({"status": "success", "message": "성공적으로 저장되었습니다."}), 200
+
+    except Exception as e:
+        app.logger.error(f"Save Property Error: {e}")
+        return jsonify({"error": str(e)}), 500
+    
             
     
 # app.py 의 해당 API 부분 수정
@@ -665,26 +833,52 @@ def column_settings():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+# app.py 내 해당 API를 아래 내용으로 교체하세요.
+
 @app.route('/api/get_building_history', methods=['POST'])
 def get_building_history():
-    """주소 리스트를 받아 사용승인일과 대수선 정보를 반환"""
+    """
+    PNU(고유번호) 리스트를 받아 사용승인일과 대수선 정보를 반환.
+    get_data의 PNU 처리 로직(LIKE 및 OR 검색)을 차용함.
+    """
     req = request.json
-    addresses = req.get('addresses', [])
+    pnu_input = req.get('pnus', []) # 기존 'addresses' 대신 'pnus' 사용
     
-    if not addresses:
+    if not pnu_input:
         return jsonify({})
 
+    # 입력값이 단일 값일 경우 리스트로 변환 (get_data 로직 참고)
+    if isinstance(pnu_input, (str, dict)):
+        pnu_input = [pnu_input]
+
+    params = {}
+    pnu_conds = []
+    
+    # 1. PNU 조건 빌드 (LIKE 연산 적용으로 10자리/19자리 모두 대응 가능)
+    for idx, p in enumerate(pnu_input):
+        val = p.get('value', '') if isinstance(p, dict) else p
+        if val and str(val).strip():
+            p_key = f"p_idx_{idx}"
+            pnu_conds.append(f'"고유번호" LIKE :{p_key}')
+            params[p_key] = f"{str(val).strip()}%"
+
+    if not pnu_conds:
+        return jsonify({})
+
+    # 2. 쿼리 구성
+    where_sql = f"WHERE ({' OR '.join(pnu_conds)})"
+    
     try:
         with engine.connect() as conn:
-            # 주소 리스트를 SQL IN 절에 넣기 위해 튜플화
+            # 고유번호를 키로 사용하도록 변경
             query = text(f"""
-                SELECT "통합주소", "사용승인일", "대수선및리모델링" 
+                SELECT "고유번호", "사용승인일", "대수선및리모델링" 
                 FROM {TABLE_NAME} 
-                WHERE "통합주소" IN :addr_list
+                {where_sql}
             """)
-            result = conn.execute(query, {"addr_list": tuple(addresses)})
+            result = conn.execute(query, params)
             
-            # { "주소": {"사용승인일": "...", "대수선": "..."}, ... } 형식으로 변환
+            # 응답 구조: { "PNU": {"사용승인일": "...", "대수선": "..."}, ... }
             history_map = {
                 row[0]: {
                     "사용승인일": row[1], 
@@ -692,8 +886,9 @@ def get_building_history():
                 } for row in result.fetchall()
             }
             return jsonify(history_map)
+            
     except Exception as e:
-        app.logger.error(f"Remote DB Fetch Error: {e}")
+        app.logger.error(f"PNU-based History Fetch Error: {e}")
         return jsonify({"error": str(e)}), 500
     
 @app.route('/api/floors', methods=['POST'])
@@ -733,47 +928,176 @@ def get_floors():
         return jsonify({"error": str(e)}), 500
     
 
-# app.py 내 save_property API 수정
-@app.route('/api/save_property', methods=['POST'])
-def save_property():
-    data = request.get_json()
-    address = data.get('address')
-    floors = data.get('floors')
+# Auth ---------------------------------
 
-    if not address:
-        return jsonify({"error": "주소가 없습니다."}), 400
+# app.py에 추가
+
+@app.route('/signup', methods=['POST'])
+def signup():
+    data = request.get_json()
+    u_id = data.get('user_id')
+    u_role = data.get('role')
+
+    if Users.query.get(u_id):
+        return jsonify({"message": "이미 존재하는 아이디입니다."}), 400
+
+    new_user = Users(
+        user_id=u_id,
+        user_pw=data.get('user_pw'),
+        user_name=data.get('user_name'),
+        role=u_role
+    )
+
+    if u_role == 'MASTER':
+        # 마스터는 본인 아이디로 팀 생성
+        new_team = Team(master_id=u_id)
+        new_user.belong_to_team = u_id
+        db.session.add(new_team)
+    else:
+        # 슬레이브는 입력받은 팀장 아이디 확인
+        m_id = data.get('master_id')
+        if not Team.query.get(m_id):
+            return jsonify({"message": "존재하지 않는 팀장(마스터) 아이디입니다."}), 400
+        new_user.belong_to_team = m_id
+
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "회원가입 완료"}), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    user = Users.query.filter_by(
+        user_id=data.get('user_id'), 
+        user_pw=data.get('user_pw'),
+    ).first()
+
+    if not user:
+        return jsonify({"message": "아이디 또는 비밀번호가 틀렸습니다."}), 401
+
+    # 세션 정의
+    session['user_id'] = user.user_id
+    session['user_name'] = user.user_name
+    session['role'] = user.role
+    session['team_id'] = user.belong_to_team # 마스터 아이디가 담김
+    
+    return jsonify({"message": "로그인 성공"}), 200
+
+# app.py 내 Auth 라우트 위나 적당한 위치에 추가
+
+@app.before_request
+def login_required():
+    # 1. 세션에 user_id가 있는지 확인
+    user_id = session.get('user_id')
+    
+    # 2. 예외 처리해야 할 경로 정의 (로그인 안 해도 접근 가능해야 하는 곳)
+    # 'auth' (HTML 페이지), 'login' (인증 API), 'signup' (회원가입 API), 'static' (이미지/CSS 등)
+    allowed_endpoints = ['auth', 'login', 'signup', 'static']
+    
+    # 3. 세션이 없고, 현재 요청한 곳이 허용된 경로가 아니면 /auth로 강제 이동
+    if not user_id and request.endpoint not in allowed_endpoints:
+        return redirect(url_for('auth'))
+    
+@app.route('/api/get_session', methods=['GET'])
+def get_session():
+    # 세션에 정보가 있는지 확인
+    if 'user_id' in session:
+        return jsonify({
+            "logged_in": True,
+            "user_id": session.get('user_id'),
+            "user_name": session.get('user_name'),
+            "role": session.get('role'),
+            "team_id": session.get('team_id')
+        }), 200
+    else:
+        return jsonify({"logged_in": False}), 401
+    
+#----메모 Memo ------------------------------
+
+from flask import request, jsonify, session
+
+# 1. 메모 조회 엔드포인트
+@app.route('/api/load_memos', methods=['GET'])
+def load_memos():
+    pnu = request.args.get('pnu')
+    if not pnu:
+        return jsonify({"message": "PNU가 필요합니다."}), 400
+
+    # PNU에 해당하는 메모들을 최신순으로 조회
+    memos = PropMemo.query.filter_by(pnu=pnu).order_by(PropMemo.created_at.desc()).all()
+    
+    memo_list = []
+    for m in memos:
+        memo_list.append({
+            "id": m.id,
+            "content": m.content,
+            "writer_name": m.writer.user_name if m.writer else "알 수 없음", # 관계 설정을 통해 이름 가져옴
+            "created_at": m.created_at.strftime('%Y-%m-%d %H:%M'),
+            "importance": m.importance
+        })
+    
+    return jsonify({"memos": memo_list}), 200
+
+# 2. 메모 추가 엔드포인트
+@app.route('/api/add_memo', methods=['POST'])
+def add_memo():
+    data = request.get_json()
+    pnu = data.get('pnu')
+    content = data.get('content')
+    importance = data.get('importance', '보통') # 기본값 '보통'
+    
+    # 세션에서 현재 로그인한 사용자 ID 가져오기
+    writer_id = session.get('user_id')
+
+    if not pnu or not content:
+        return jsonify({"message": "필수 입력 정보가 누락되었습니다."}), 400
+    
+    if not writer_id:
+        return jsonify({"message": "로그인이 필요합니다."}), 401
 
     try:
-        with engine.begin() as conn: # engine.begin()은 자동 커밋을 지원합니다.
-            # 1. 기존 이 주소로 등록된 매물 상세 정보를 모두 삭제 (새로 고침 방식)
-            # 수동 추가 방식이므로, 기존 데이터를 지우고 현재 화면의 데이터를 넣는 것이 가장 깔끔합니다.
-            conn.execute(text("DELETE FROM prop_details WHERE \"통합주소\" = :address"), {"address": address})
-
-            # 2. 새로운 데이터 삽입
-            if floors:
-                insert_sql = text("""
-                    INSERT INTO prop_details 
-                    ("통합주소", "층", "형태", "평수", "보증금", "임대료", "월관리비", "임대차기간", "정렬층")
-                    VALUES (:address, :floor, :type, :area, :security, :rent, :management, :lease_period, NULL)
-                """)
-                
-                for item in floors:
-                    conn.execute(insert_sql, {
-                        "address": address,
-                        "floor": item['floor'],
-                        "type": item['type'],
-                        "area": item['area'] or 0,
-                        "security": item['security'] or 0,
-                        "rent": item['rent'] or 0,
-                        "management": item['management'] or 0,
-                        "lease_period": item['lease_period'] or ""
-                    })
-
-        return jsonify({"status": "success", "message": "성공적으로 저장되었습니다."}), 200
-
+        new_memo = PropMemo(
+            pnu=pnu,
+            writer_id=writer_id,
+            content=content,
+            importance=importance
+        )
+        db.session.add(new_memo)
+        db.session.commit()
+        
+        return jsonify({"message": "메모가 성공적으로 등록되었습니다."}), 201
     except Exception as e:
-        app.logger.error(f"Save Property Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        db.session.rollback()
+        return jsonify({"message": f"오류 발생: {str(e)}"}), 500
+    
+# 메모 수정 엔드포인트
+@app.route('/api/update_memo', methods=['POST'])
+def update_memo():
+    data = request.get_json()
+    memo_id = data.get('id')
+    content = data.get('content')
+    importance = data.get('importance')
+    
+    if not memo_id or not content:
+        return jsonify({"message": "수정할 내용이 없습니다."}), 400
+        
+    memo = PropMemo.query.get(memo_id)
+    if not memo:
+        return jsonify({"message": "메모를 찾을 수 없습니다."}), 404
+    
+    # 본인 확인 로직 (필요시)
+    if memo.writer_id != session.get('user_id'):
+        return jsonify({"message": "수정 권한이 없습니다."}), 403
+
+    try:
+        memo.content = content
+        memo.importance = importance
+        memo.created_at = db.func.now() # 수정 시간 업데이트
+        db.session.commit()
+        return jsonify({"message": "수정 완료"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
 
 
 if __name__ == '__main__':

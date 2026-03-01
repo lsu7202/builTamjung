@@ -128,32 +128,39 @@
             margin-top: 20px;
         }
 
-    /* 마우스를 올렸을 때 (Hover) */
-    #generatePpt:hover {
-        background-color: #344a8d; /* 조금 더 밝은 파란색으로 변경 */
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2); /* 그림자 강화 */
-        transform: translateY(-2px); /* 살짝 위로 떠오르는 효과 */
-    }
+        /* 마우스를 올렸을 때 (Hover) */
+        #generatePpt:hover {
+            background-color: #344a8d;
+            /* 조금 더 밝은 파란색으로 변경 */
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+            /* 그림자 강화 */
+            transform: translateY(-2px);
+            /* 살짝 위로 떠오르는 효과 */
+        }
 
-    /* 눌렀을 때 (Active) */
-    #generatePpt:active {
-        background-color: #1e2d5e; /* 더 어두운 파란색 */
-        transform: translateY(1px); /* 다시 살짝 내려가는 효과 */
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* 그림자 축소 */
-    }
+        /* 눌렀을 때 (Active) */
+        #generatePpt:active {
+            background-color: #1e2d5e;
+            /* 더 어두운 파란색 */
+            transform: translateY(1px);
+            /* 다시 살짝 내려가는 효과 */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            /* 그림자 축소 */
+        }
 
-    /* 포커스 되었을 때 (Accessibility) */
-    #generatePpt:focus {
-        box-shadow: 0 0 0 3px rgba(38, 57, 119, 0.4); /* 버튼 주변에 은은한 테두리 */
-    }
+        /* 포커스 되었을 때 (Accessibility) */
+        #generatePpt:focus {
+            box-shadow: 0 0 0 3px rgba(38, 57, 119, 0.4);
+            /* 버튼 주변에 은은한 테두리 */
+        }
 
-    /* 비활성화 상태 (버튼 클릭 후 생성 중일 때 등) */
-    #generatePpt:disabled {
-        background-color: #25ea17;
-        cursor: not-allowed;
-        transform: none;
-        box-shadow: none;
-    }
+        /* 비활성화 상태 (버튼 클릭 후 생성 중일 때 등) */
+        #generatePpt:disabled {
+            background-color: #25ea17;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
 
 
         /* 기존 .slide-preview-box 찾아서 아래 수치로 변경 */
@@ -214,7 +221,7 @@
 
         <div class="section">
             <h3>01 건물개요</h3>
-            <input type="file" id="buildingImgInput" accept="image/*" onchange="handleImageUpload(event)">
+            <input type="file" id="buildingImgInput" accept="image/*">
             <div id="canvasWrapper">
                 <canvas id="buildingCanvas" width="900" height="1420.8"></canvas>
             </div>
@@ -225,8 +232,8 @@
         <div class="section">
             <h3>02 위치도</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'map1')">
-                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'map2')">
+                <input type="file" id="map1Input" accept="image/*" >
+                <input type="file" id="map2Input" accept="image/*" >
             </div>
             <div id="mapPreview" class="slide-preview-box" style="display: block; margin: 0 auto; position: relative;">
                 <p id="mapPlaceholder" style="text-align:center; margin-top:250px; color:#ccc;">위치도 이미지 2개를 업로드하세요.</p>
@@ -236,7 +243,7 @@
         <div class="section">
             <h3>03 매물사진</h3>
             <p class="info-text"></p>
-            <input type="file" id="roomImgsInput" accept="image/*" multiple onchange="handleMultiUpload(event, 'room')">
+            <input type="file" id="roomImgsInput" accept="image/*" multiple>
             <div id="roomPreview">
             </div>
         </div>
@@ -244,8 +251,8 @@
         <div class="section">
             <h3>05 건축물정보 / 06 토지이용계획</h3>
             <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'buildInfo')">
-                <input type="file" accept="image/*" onchange="handleMultiUpload(event, 'landPlan')">
+                <input type="file" id="buildInfoInput" accept="image/*">
+                <input type="file" id="landPlanInput" accept="image/*">
             </div>
 
             <div id="splitPreview" class="slide-preview-box">
@@ -263,7 +270,8 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-    <script src="{{ url_for('static', filename='ppt_logic.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='/bjdcode.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='/ppt_logic.js') }}"></script>
 
     <script>
 

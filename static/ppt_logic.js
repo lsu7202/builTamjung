@@ -1,4 +1,4 @@
-
+import { convertAddressToPNU } from "./bjdcode.js";
 
 
 // --- 기존 변수 유지 ---
@@ -283,6 +283,23 @@ function handleMultiUpload(e, type) {
 
 }
 
+// ppt_logic.js 파일 맨 하단에 기존 연결 코드를 지우고 아래로 교체
+document.addEventListener('DOMContentLoaded', () => {
+    // 01 건물개요
+    document.getElementById('buildingImgInput')?.addEventListener('change', handleImageUpload);
+
+    // 02 위치도
+    document.getElementById('map1Input')?.addEventListener('change', (e) => handleMultiUpload(e, 'map1'));
+    document.getElementById('map2Input')?.addEventListener('change', (e) => handleMultiUpload(e, 'map2'));
+
+    // 03 매물사진
+    document.getElementById('roomImgsInput')?.addEventListener('change', (e) => handleMultiUpload(e, 'room'));
+
+    // 05 건축물정보 / 06 토지이용계획
+    document.getElementById('buildInfoInput')?.addEventListener('change', (e) => handleMultiUpload(e, 'buildInfo'));
+    document.getElementById('landPlanInput')?.addEventListener('change', (e) => handleMultiUpload(e, 'landPlan'));
+});
+
 let TitleAddr = "브리핑자료"
 
 // [전역 변수 선언] - 다른 함수(PPT 생성 등)에서도 접근 가능합니다.
@@ -304,6 +321,8 @@ const DB_COL_PERIOD = "임대차기간";
 let leaseData = [];
 
 async function fetchLeaseData(fullAddress) {
+
+    const pnu = convertAddressToPNU(fullAddress);
     const addressParts = fullAddress.split(' ');
     const filteredParts = addressParts.slice(2);
     TitleAddr = filteredParts.join(' ');
@@ -313,7 +332,7 @@ async function fetchLeaseData(fullAddress) {
         const res = await fetch('/api/get_propDetail', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ "통합주소": fullAddress })
+            body: JSON.stringify({ "고유번호": pnu })
         });
 
         const result = await res.json();
@@ -346,6 +365,8 @@ async function fetchLeaseData(fullAddress) {
 async function searchAddressForPPT() {
     const addressInput = document.getElementById('address-Input');
     const address = addressInput.value.trim();
+    const pnu = convertAddressToPNU(address);
+    
     if (!address) return alert("주소를 입력해주세요.");
 
     try {
@@ -353,7 +374,7 @@ async function searchAddressForPPT() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                keyword: address,
+                고유번호: pnu,
                 limit: 1
             })
         });
@@ -378,7 +399,7 @@ async function searchAddressForPPT() {
         
 
         // 2. 전역 변수에 데이터 가공 및 초기화
-        fullAddr = building.통합주소 || "";
+        fullAddr = (`${building.시도} ${building.시군구} ${building.주소}`) || "";
 
         // [면적] 소수점 2자리 반올림 및 평수(_p) 계산
         area = rawArea.toFixed(2);
@@ -404,7 +425,7 @@ async function searchAddressForPPT() {
         under = parseInt(building.규모지하) ? "B" + parseInt(building.규모지하) : "B1";
         above = parseInt(building.규모지상) ? parseInt(building.규모지상) + "F" : "1F";
         parking = parseInt(building.주차장 || "0") + "대";
-        buildDate = `${rawDate.substring(0, 4)}/${rawDate.substring(4, 6)}/${rawDate.substring(6, 8)}`;
+        buildDate = rawDate.replace(/-/g, '/');
         lift = parseInt(building.엘리베이터 || "0") + "대";
 
         returnrate = parseFloat(building.수익률 || "0");
