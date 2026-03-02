@@ -96,6 +96,7 @@ class SeoulLandInfo(db.Model):
     land_area = db.Column(db.Float, name="토지면적")
     build_land_area = db.Column(db.Float, name="대지면적")
     total_floor_area = db.Column(db.Float, name="연면적")
+    far_carc_area = db.Column(db.Float, name="용적률산정연면적")
     building_area = db.Column(db.Float, name="건축면적")
     zoning = db.Column(db.Text, name="용도지역")
     main_usage = db.Column(db.Text, name="주용도")
