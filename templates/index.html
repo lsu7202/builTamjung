@@ -712,17 +712,18 @@
                                 </div>
                             </div>
                             <div class="grid grid-cols-4 gap-3 items-end">
-                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">시군구</label><select
-                                        id="reg-sigungu"
+                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">시군구</label>
+                                    <select id="reg-sigungu"
                                         class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white"></select>
                                 </div>
-                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">법정동</label><select
-                                        id="reg-dong"
+                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">법정동</label>
+                                    <select id="reg-dong"
                                         class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white"></select>
                                 </div>
-                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">지번</label><input
-                                        type="text" id="reg-address-input" placeholder="지번 입력"
-                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"></div>
+                                <div><label class="block text-[11px] font-bold text-gray-500 mb-1">지번</label>
+                                    <input type="text" id="reg-address-input" placeholder="지번 입력"
+                                        class="w-full border border-gray-300 rounded px-2 py-1.5 text-xs">
+                                </div>
                                 <button onclick="fillPropertyDataHandler()"
                                     class="bg-gray-800 text-white px-4 py-2 rounded text-xs font-bold hover:bg-black transition-colors">정보
                                     불러오기</button>
@@ -730,35 +731,31 @@
                         </section>
 
                         <section class="bg-green-50 p-5 rounded-xl border border-green-100 shadow-sm space-y-4">
-                            <h4 class="text-sm font-bold text-gray-700 border-b pb-2">
-                                <i class="fa-solid fa-circle-person text-blue-500 mr-2"></i>세부 정보
-                            </h4>
+                            <h4 class="text-sm font-bold text-gray-700 border-b pb-2"><i
+                                    class="fa-solid fa-circle-person text-blue-500 mr-2"></i>세부 정보</h4>
                             <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">담당자</label>
-                                    <input type="text" id="reg-manager" readonly
-                                        class="w-full border rounded p-1.5 text-xs bg-white">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">담당자</label>
+                                    <input type="text" id="reg-manager" data-unit="text" onblur="Val.sync(this)"
+                                        readonly class="w-full border rounded p-1.5 text-xs bg-white">
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">소유자 종류</label>
-                                    <select id="reg-owner-type" class="w-full border rounded p-1.5 text-xs bg-white">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">소유자 종류</label>
+                                    <select id="reg-owner-type" data-unit="text" onchange="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs bg-white">
                                         <option value="개인">개인</option>
                                         <option value="법인">법인</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">소유자 명</label>
-                                    <input type="text" id="reg-owner-name"
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">소유자 명</label>
+                                    <input type="text" id="reg-owner-name" data-unit="text" onblur="Val.sync(this)"
                                         class="w-full border rounded p-1.5 text-xs bg-white">
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">전화번호</label>
-                                    <input type="text" id="reg-contact"
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">전화번호</label>
+                                    <input type="text" id="reg-contact" data-unit="text" onblur="Val.sync(this)"
                                         class="w-full border rounded p-1.5 text-xs bg-white">
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">관계</label>
-                                    <select id="reg-relationship" class="w-full border rounded p-1.5 text-xs bg-white">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">관계</label>
+                                    <select id="reg-relationship" data-unit="text" onchange="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs bg-white">
                                         <option value="건물주/법인대표">건물주/법인대표</option>
                                         <option value="관리자">관리자</option>
                                         <option value="친인척">친인척</option>
@@ -766,64 +763,58 @@
                                         <option value="기타">기타</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">성향</label>
-                                    <select id="reg-inclination" class="w-full border rounded p-1.5 text-xs bg-white">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">성향</label>
+                                    <select id="reg-inclination" data-unit="text" onchange="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs bg-white">
                                         <option value="협조적">협조적</option>
                                         <option value="비협조적">비협조적</option>
                                         <option value="친절">친절</option>
                                         <option value="불친절">불친절</option>
                                     </select>
                                 </div>
-
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">접수일</label>
-                                    <input type="text" id="reg-proped-date" oninput="formatDate(this)"
-                                        class="w-full border rounded p-1.5 text-xs bg-white" placeholder="YYYY-MM-DD">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">접수일</label>
+                                    <input type="text" id="reg-proped-date" data-unit="text" oninput="formatDate(this)"
+                                        onblur="Val.sync(this)" class="w-full border rounded p-1.5 text-xs bg-white"
+                                        placeholder="YYYY-MM-DD">
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">매수의향서</label>
-                                    <select id="reg-intent-to-buy" class="w-full border rounded p-1.5 text-xs bg-white">
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">매수의향서</label>
+                                    <select id="reg-intent-to-buy" data-unit="text" onchange="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs bg-white">
                                         <option value="원함">원함</option>
                                         <option value="원치않음">원치않음</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">영상번호분초</label>
-                                    <input type="text" id="reg-video-timestamp"
+                                <div><label class="block text-[11px] font-bold text-gray-400 mb-1">영상번호분초</label>
+                                    <input type="text" id="reg-video-timestamp" data-unit="text" onblur="Val.sync(this)"
                                         class="w-full border rounded p-1.5 text-xs bg-white">
                                 </div>
-                                <div class="col-span-1 md:col-span-3">
-                                    <label class="block text-[11px] font-bold text-gray-400 mb-1">소유자 내용</label>
-                                    <input type="text" id="reg-owner-details"
+                                <div class="col-span-1 md:col-span-3"><label
+                                        class="block text-[11px] font-bold text-gray-400 mb-1">소유자 내용</label>
+                                    <input type="text" id="reg-owner-details" data-unit="text" onblur="Val.sync(this)"
                                         class="w-full border rounded p-1.5 text-xs bg-white">
                                 </div>
                             </div>
                             <div class="border-t pt-4">
                                 <label class="block text-[11px] font-bold text-gray-400 mb-2">메모 히스토리 (클릭 시 수정)</label>
-
                                 <div class="flex flex-col lg:flex-row gap-4">
                                     <div class="w-full lg:w-1/3 space-y-2">
-                                        <input type="hidden" id="edit-memo-id" value=""> <textarea id="reg-memo"
-                                            rows="4"
+                                        <input type="hidden" id="edit-memo-id" data-unit="text" value="">
+                                        <textarea id="reg-memo" data-unit="text" rows="4"
                                             class="w-full border rounded p-2 text-xs bg-white focus:outline-blue-500"
-                                            placeholder="내용을 입력하세요..."
+                                            placeholder="내용을 입력하세요..." onblur="Val.sync(this)"
                                             onkeydown="if(event.keyCode==13 && event.ctrlKey) saveMemo()"></textarea>
-
                                         <div class="flex gap-2">
-                                            <select id="reg-importance"
+                                            <select id="reg-importance" data-unit="text" onchange="Val.sync(this)"
                                                 class="flex-1 border rounded px-2 py-1.5 text-xs bg-white">
                                                 <option value="일반">일반 (회색)</option>
                                                 <option value="중요">중요 (노란색)</option>
                                                 <option value="매우중요">매우중요 (보라색)</option>
                                             </select>
                                             <button id="btn-save-memo" onclick="saveMemo()"
-                                                class="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 shadow-sm">
-                                                입력 (Ctrl+Enter)
-                                            </button>
+                                                class="px-4 py-1.5 bg-blue-600 text-white rounded text-xs font-bold hover:bg-blue-700 shadow-sm">입력
+                                                (Ctrl+Enter)</button>
                                         </div>
                                     </div>
-
                                     <div id="memo-list-container"
                                         class="w-full lg:flex-1 h-[200px] overflow-y-auto p-3 bg-white border rounded-lg shadow-inner space-y-2">
                                         <p class="text-center text-gray-400 text-xs mt-10">등록된 메모가 없습니다.</p>
@@ -837,126 +828,145 @@
                                 <h4 class="text-sm font-bold text-gray-700 border-b pb-2"><i
                                         class="fa-solid fa-circle-info text-blue-500 mr-2"></i>메인 정보</h4>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="block text-[11px] font-bold text-gray-400">매매가(억)</label><input
-                                            type="text" id="reg-sale-price" data-unit="eok"
+                                    <div><label class="block text-[11px] font-bold text-gray-400">매매가(억)</label>
+                                        <input type="text" id="reg-sale-price" data-unit="eok"
                                             class="w-full border rounded p-1.5 text-xs bg-amber-50"
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div><label class="block text-[11px] font-bold text-gray-400">수익률(%)</label><input
-                                            type="text" id="reg-yield" data-unit="rate"
+                                            onblur="Val.sync(this); calculatePropertyStats();">
+                                    </div>
+                                    <div><label class="block text-[11px] font-bold text-gray-400">수익률(%)</label>
+                                        <input type="text" id="reg-yield" data-unit="rate"
                                             class="w-full border rounded p-1.5 text-xs bg-gray-50 font-bold" readonly>
                                     </div>
                                     <div class="col-span-2 grid grid-cols-3 gap-2">
-                                        <div><label class="text-[10px] text-gray-400">총보증금(만)</label><input
-                                                type="text" id="reg-total-security" data-unit="man"
+                                        <div><label class="text-[10px] text-gray-400">총보증금(만)</label>
+                                            <input type="text" id="reg-total-security" data-unit="man"
                                                 class="w-full border rounded p-1 text-xs"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">총월세(만)</label><input type="text"
-                                                id="reg-total-rent" data-unit="man" class="w-full border rounded p-1 text-xs"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">총관리비(만)</label><input
-                                                type="text" id="reg-total-manage" data-unit="man"
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">총월세(만)</label>
+                                            <input type="text" id="reg-total-rent" data-unit="man"
                                                 class="w-full border rounded p-1 text-xs"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">총관리비(만)</label>
+                                            <input type="text" id="reg-total-manage" data-unit="man"
+                                                class="w-full border rounded p-1 text-xs"
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                        </div>
                                     </div>
-                                    <div><label class="block text-[11px] font-bold text-gray-400">평단가(대지)</label><input
-                                            type="text" id="reg-price-land" data-unit="man"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div><label class="block text-[11px] font-bold text-gray-400">평단가(연면적)</label><input
-                                            type="text" id="reg-price-total" data-unit="man"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div class="col-span-1"><label
-                                            class="block text-[11px] font-bold text-gray-400">공시가/매매가 비율</label><input
-                                            type="text" id="reg-gongsi-ratio" data-unit="rate"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div class="col-span-1"><label
-                                            class="block text-[11px] font-bold text-gray-400">매물번호</label><input
-                                            type="text" id="reg-prop-id" class="w-full border rounded p-1.5 text-xs">
+                                    <div><label class="block text-[11px] font-bold text-gray-400">평단가(대지)</label>
+                                        <input type="text" id="reg-price-land" data-unit="man"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                    </div>
+                                    <div><label class="block text-[11px] font-bold text-gray-400">평단가(연면적)</label>
+                                        <input type="text" id="reg-price-total" data-unit="man"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                    </div>
+                                    <div><label class="block text-[11px] font-bold text-gray-400">공시가/매매가 비율</label>
+                                        <input type="text" id="reg-gongsi-ratio" data-unit="rate"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                    </div>
+                                    <div><label class="block text-[11px] font-bold text-gray-400">매물번호</label>
+                                        <input type="text" id="reg-prop-id" data-unit="text" onblur="Val.sync(this)"
+                                            class="w-full border rounded p-1.5 text-xs">
                                     </div>
                                     <div class="col-span-2 p-3 bg-blue-50 rounded-lg border border-blue-100">
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="text-[11px] font-bold text-blue-800">자기자본 수익률 (<span
                                                     id="loan-amount-display">대출 0억</span>)</label>
-                                            <div id="reg-self-yield-display" class="font-black text-blue-700 text-sm" data-unit="rate">
-                                            </div>
+                                            <div id="reg-self-yield-display" data-unit="rate"
+                                                class="font-black text-blue-700 text-sm"></div>
                                         </div>
-                                        <div class="flex gap-2"><input type="text" id="reg-invest-cash"
-                                                 class="w-1/2 border rounded p-1.5 text-xs" data-unit="eok"
-                                                onblur="Val.sync(this); calculatePropertyStats();">
-                                                <input type="text"
-                                                id="reg-loan-rate" placeholder="이자(%)" data-unit="rate"
-                                                class="w-1/2 border rounded p-1.5 text-xs"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div class="flex gap-2">
+                                            <input type="text" id="reg-invest-cash" data-unit="eok"
+                                                onblur="Val.sync(this); calculatePropertyStats();"
+                                                class="w-1/2 border rounded p-1.5 text-xs">
+                                            <input type="text" id="reg-loan-rate" data-unit="rate" placeholder="이자(%)"
+                                                onblur="Val.sync(this); calculatePropertyStats();"
+                                                class="w-1/2 border rounded p-1.5 text-xs">
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-3 gap-2 pt-2">
-                                    <div><label class="block text-[10px] text-gray-400">진행상태</label><select
-                                            id="reg-status" class="w-full border rounded p-1 text-[11px]">
+                                    <div><label class="block text-[10px] text-gray-400">진행상태</label>
+                                        <select id="reg-status" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value="준비">준비</option>
                                             <option value="진행중">진행중</option>
                                             <option value="철회">철회</option>
                                             <option value="가격제시">가격제시</option>
                                             <option value="매각">매각</option>
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">긴급도</label><select
-                                            id="reg-urgency" class="w-full border rounded p-1 text-[11px]">
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">긴급도</label>
+                                        <select id="reg-urgency" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value="없음">없음</option>
                                             <option value="A 매우급함">A 매우급함</option>
                                             <option value="B 급함">B 급함</option>
                                             <option value="C 적당히">C 적당히</option>
                                             <option value="D 안급함">D 안급함</option>
                                             <option value="Z 안팔아도됨">Z 안팔아도됨</option>
-
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">입지</label><select
-                                            id="reg-location" class="w-full border rounded p-1 text-[11px]">
-                                            <option value=""></option>
-                                            <option value="A 아주좋음">A 아주좋음</option>
-                                            <option value="B 적당히좋음">B</option>
-                                            <option value="C 별로임">C</option>
-                                            <option value="D 아주별로임">D</option>
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">등급</label><select id="reg-grade"
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">입지</label>
+                                        <select id="reg-location" data-unit="text" onchange="Val.sync(this)"
                                             class="w-full border rounded p-1 text-[11px]">
                                             <option value=""></option>
                                             <option value="A 아주좋음">A 아주좋음</option>
                                             <option value="B 적당히좋음">B</option>
                                             <option value="C 별로임">C</option>
                                             <option value="D 아주별로임">D</option>
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">건물용도</label><select
-                                            id="reg-b-usage" class="w-full border rounded p-1 text-[11px]">
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">등급</label>
+                                        <select id="reg-grade" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
+                                            <option value=""></option>
+                                            <option value="A 아주좋음">A 아주좋음</option>
+                                            <option value="B 적당히좋음">B</option>
+                                            <option value="C 별로임">C</option>
+                                            <option value="D 아주별로임">D</option>
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">건물용도</label>
+                                        <select id="reg-b-usage" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value=""></option>
                                             <option value="수익률">수익률</option>
                                             <option value="신축용">신축용</option>
                                             <option value="사옥용">사옥용</option>
                                             <option value="리모델링용">리모델링용</option>
-                                        </select></div>
+                                        </select>
+                                    </div>
                                     <div><label class="block text-[10px] text-gray-400">사진/브리핑</label>
-                                        <div class="flex gap-1"><select id="reg-has-photo"
+                                        <div class="flex gap-1">
+                                            <select id="reg-has-photo" data-unit="text" onchange="Val.sync(this)"
                                                 class="w-1/2 border rounded p-1 text-[11px]">
                                                 <option value="무">사진(무)</option>
                                                 <option value="유">사진(유)</option>
-                                            </select><select id="reg-has-brief"
+                                            </select>
+                                            <select id="reg-has-brief" data-unit="text" onchange="Val.sync(this)"
                                                 class="w-1/2 border rounded p-1 text-[11px]">
                                                 <option value="무">자료(무)</option>
                                                 <option value="유">자료(유)</option>
-
-                                            </select></div>
+                                            </select>
+                                        </div>
                                     </div>
-                                    <div><label class="block text-[10px] text-gray-400">명도</label><select
-                                            id="reg-eviction" class="w-full border rounded p-1 text-[11px]">
+                                    <div><label class="block text-[10px] text-gray-400">명도</label>
+                                        <select id="reg-eviction" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value="확인중">확인중</option>
                                             <option value="완료">완료</option>
                                             <option value="가능">가능</option>
                                             <option value="불가">불가</option>
                                             <option value="일부">일부</option>
                                             <option value="조건부">조건부</option>
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">용도변경</label><select
-                                            id="reg-usage-change" class="w-full border rounded p-1 text-[11px]">
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">용도변경</label>
+                                        <select id="reg-usage-change" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value="확인중">확인중</option>
                                             <option value="나대지(주차장)">나대지(주차장)</option>
                                             <option value="근생">근생</option>
@@ -967,9 +977,11 @@
                                             <option value="불가">불가</option>
                                             <option value="협의가">협의가</option>
                                             <option value="조건부">조건부</option>
-                                        </select></div>
-                                    <div><label class="block text-[10px] text-gray-400">멸실</label><select
-                                            id="reg-demolition" class="w-full border rounded p-1 text-[11px]">
+                                        </select>
+                                    </div>
+                                    <div><label class="block text-[10px] text-gray-400">멸실</label>
+                                        <select id="reg-demolition" data-unit="text" onchange="Val.sync(this)"
+                                            class="w-full border rounded p-1 text-[11px]">
                                             <option value="확인중">확인중</option>
                                             <option value="불가">불가</option>
                                             <option value="협조가능">협조가능</option>
@@ -977,7 +989,8 @@
                                             <option value="나대지(주차장)">나대지(주차장)</option>
                                             <option value="협의가능">협의가능</option>
                                             <option value="조건부">조건부</option>
-                                        </select></div>
+                                        </select>
+                                    </div>
                                 </div>
                             </section>
 
@@ -986,67 +999,83 @@
                                         class="fa-solid fa-building-user text-blue-500 mr-2"></i>건물 정보</h4>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div class="flex gap-2">
-                                        <div class="w-1/2"><label
-                                                class="text-[11px] font-bold text-gray-400">지상</label><input
-                                                type="number" id="reg-floor-above"
-                                                class="w-full border rounded p-1.5 text-xs"></div>
-                                        <div class="w-1/2"><label
-                                                class="text-[11px] font-bold text-gray-400">지하</label><input
-                                                type="number" id="reg-floor-below"
-                                                class="w-full border rounded p-1.5 text-xs"></div>
+                                        <div class="w-1/2"><label class="text-[11px] font-bold text-gray-400">지상</label>
+                                            <input type="text" id="reg-floor-above" data-unit="text"
+                                                onblur="Val.sync(this)" class="w-full border rounded p-1.5 text-xs">
+                                        </div>
+                                        <div class="w-1/2"><label class="text-[11px] font-bold text-gray-400">지하</label>
+                                            <input type="text" id="reg-floor-below" data-unit="text"
+                                                onblur="Val.sync(this)" class="w-full border rounded p-1.5 text-xs">
+                                        </div>
                                     </div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">대지면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="text"
-                                            id="reg-land-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">건축면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="text"
-                                            id="reg-build-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">연면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="text"
-                                            id="reg-total-area-val" data-unit="area"
-                                            class="w-full border rounded p-1.5 text-xs area-input"
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">용적률산정용(<span
-                                                class="unit-label">㎡</span>)</label><input type="text"
-                                            id="reg-far-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
-                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">대지면적</label>
+                                        <input type="text" id="reg-land-area" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs area-input">
+                                    </div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">건축면적</label>
+                                        <input type="text" id="reg-build-area" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs area-input">
+                                    </div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">연면적</label>
+                                        <input type="text" id="reg-total-area-val" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs area-input">
+                                    </div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">용적률산정용</label>
+                                        <input type="text" id="reg-far-area" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs area-input">
+                                    </div>
                                     <div><label class="text-[11px] font-bold text-gray-400">엘리베이터/주차</label>
-                                        <div class="flex gap-1"><input type="number" id="reg-elevator" placeholder="EL"
-                                                class="w-1/2 border rounded p-1.5 text-xs"><input type="number"
-                                                id="reg-parking" placeholder="주차"
-                                                class="w-1/2 border rounded p-1.5 text-xs"></div>
+                                        <div class="flex gap-1">
+                                            <input type="text" id="reg-elevator" data-unit="text" placeholder="EL"
+                                                onblur="Val.sync(this)" class="w-1/2 border rounded p-1.5 text-xs">
+                                            <input type="text" id="reg-parking" data-unit="text" placeholder="주차"
+                                                onblur="Val.sync(this)" class="w-1/2 border rounded p-1.5 text-xs">
+                                        </div>
                                     </div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">사용승인일</label><input
-                                            type="text" id="reg-approval-date" oninput="formatDate(this)"
-                                            class="w-full border rounded p-1.5 text-xs"></div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">사용승인일</label>
+                                        <input type="text" id="reg-approval-date" data-unit="text"
+                                            oninput="formatDate(this)" onblur="Val.sync(this)"
+                                            class="w-full border rounded p-1.5 text-xs">
+                                    </div>
                                     <div class="col-span-2"><label class="text-[11px] font-bold text-gray-400">대수선 및
-                                            리모델링</label><input type="text" id="reg-remodel-date"
-                                            oninput="formatDate(this)" class="w-full border rounded p-1.5 text-xs">
+                                            리모델링</label>
+                                        <input type="text" id="reg-remodel-date" data-unit="text"
+                                            oninput="formatDate(this)" onblur="Val.sync(this)"
+                                            class="w-full border rounded p-1.5 text-xs">
                                     </div>
                                     <div class="col-span-2 grid grid-cols-3 gap-2 border-t pt-3">
-                                        <div><label class="text-[10px] text-gray-400">건폐율(%)</label><input type="text"
-                                                id="reg-bc-ratio"
+                                        <div><label class="text-[10px] text-gray-400">건폐율(%)</label>
+                                            <input type="text" id="reg-bc-ratio" data-unit="percent"
                                                 class="w-full border rounded p-1 text-[11px] bg-gray-50 font-bold"
-                                                readonly data-unit="percent"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">법정건폐율</label><input type="text"
-                                                id="reg-legal-bc" class="w-full border rounded p-1 text-[11px]" data-unit="percent"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div> <label class="text-[10px] text-gray-400">건폐율 - 법정건폐율</label><input type="text" id="reg-bc-diff" data-unit="rate"
-                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" 
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">용적률(%)</label><input type="text"
-                                                id="reg-far-ratio" data-unit="percent"
+                                                readonly>
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">법정건폐율</label>
+                                            <input type="text" id="reg-legal-bc" data-unit="percent"
+                                                onblur="Val.sync(this); calculatePropertyStats();"
+                                                class="w-full border rounded p-1 text-[11px]">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">건폐율 - 법정건폐율</label>
+                                            <input type="text" id="reg-bc-diff" data-unit="rate"
+                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly>
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">용적률(%)</label>
+                                            <input type="text" id="reg-far-ratio" data-unit="percent"
                                                 class="w-full border rounded p-1 text-[11px] bg-gray-50 font-bold"
-                                                readonly onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">법정용적률</label><input type="text"
-                                                id="reg-legal-far" class="w-full border rounded p-1 text-[11px]" data-unit="percent"
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                        <div><label class="text-[10px] text-gray-400">용적률 - 법정용적률</label><input type="text" id="reg-far-diff" data-unit="rate"
-                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly
-                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                                readonly>
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">법정용적률</label>
+                                            <input type="text" id="reg-legal-far" data-unit="percent"
+                                                onblur="Val.sync(this); calculatePropertyStats();"
+                                                class="w-full border rounded p-1 text-[11px]">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">용적률 - 법정용적률</label>
+                                            <input type="text" id="reg-far-diff" data-unit="rate"
+                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly>
+                                        </div>
                                     </div>
                                 </div>
                             </section>
@@ -1065,9 +1094,9 @@
                                 class="grid grid-cols-12 gap-2 px-2 py-1.5 bg-gray-100 rounded text-[10px] font-bold text-gray-500 text-center uppercase">
                                 <div class="col-span-1">층</div>
                                 <div class="col-span-2">형태</div>
-                                <div class="col-span-1">평수(<span class="unit-label">㎡</span>)</div>
-                                <div class="col-span-2">보증금(만)</div>
-                                <div class="col-span-2">임대료(만)</div>
+                                <div class="col-span-1">평수</div>
+                                <div class="col-span-2">보증금</div>
+                                <div class="col-span-2">임대료</div>
                                 <div class="col-span-1">관리비</div>
                                 <div class="col-span-1">기간</div>
                                 <div class="col-span-1">공실</div>
@@ -1078,17 +1107,19 @@
                             <div class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 grid grid-cols-2 gap-4">
                                 <div class="space-y-1">
                                     <p class="text-[11px] font-bold text-red-600">[공실제외 현재 합계]</p>
-                                    <p class="text-xs">수익률: <span id="sum-yield-current" class="font-bold">-</span> |
-                                        보증금: <span id="sum-sec-current">-</span> | 임대료: <span
-                                            id="sum-rent-current">-</span> | 관리비: <span id="sum-man-current">-</span>
-                                    </p>
+                                    <p class="text-xs">수익률: <span id="sum-yield-current" data-unit="percent"
+                                            class="font-bold">-</span> | 보증금: <span id="sum-sec-current"
+                                            data-unit="man">-</span> | 임대료: <span id="sum-rent-current"
+                                            data-unit="man">-</span> | 관리비: <span id="sum-man-current"
+                                            data-unit="man">-</span></p>
                                 </div>
                                 <div class="space-y-1 border-l pl-4">
                                     <p class="text-[11px] font-bold text-blue-600">[만실시 예상 합계]</p>
-                                    <p class="text-xs">수익률: <span id="sum-yield-full" class="font-bold">-</span> | 보증금:
-                                        <span id="sum-sec-full">-</span> | 임대료: <span id="sum-rent-full">-</span> | 관리비:
-                                        <span id="sum-man-full">-</span>
-                                    </p>
+                                    <p class="text-xs">수익률: <span id="sum-yield-full" data-unit="percent"
+                                            class="font-bold">-</span> | 보증금: <span id="sum-sec-full"
+                                            data-unit="man">-</span> | 임대료: <span id="sum-rent-full"
+                                            data-unit="man">-</span> | 관리비: <span id="sum-man-full"
+                                            data-unit="man">-</span></p>
                                 </div>
                             </div>
                         </section>
@@ -1097,39 +1128,57 @@
                             <h4 class="text-sm font-bold text-gray-700 border-b pb-2"><i
                                     class="fa-solid fa-map text-blue-500 mr-2"></i>토지 정보</h4>
                             <div class="grid grid-cols-5 gap-4">
-                                <div class="bg-amber-50 p-1 rounded"><label
-                                        class="block text-[11px] font-black text-amber-800">토지면적(<span
-                                            class="unit-label">㎡</span>)</label><input type="number"
-                                        id="reg-total-land-area"
-                                        class="w-full border-amber-200 rounded p-1.5 text-xs area-input"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">지목명</label><input type="text"
-                                        id="reg-jimok" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">용도지역</label><input type="text"
-                                        id="reg-zoning" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">토지이용상황</label><input type="text"
-                                        id="reg-land-status" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">주용도코드명</label><input type="text"
-                                        id="reg-main-code" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">지형/형상</label><input type="text"
-                                        id="reg-shape" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">도로접면</label><input type="text"
-                                        id="reg-road" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">기타용도내용</label><input type="text"
-                                        id="reg-other-usage" class="w-full border rounded p-1.5 text-xs"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(현재)</label><input
-                                        type="text" id="reg-gongsi-cur" class="w-full border rounded p-1.5 text-xs" data-unit="won"
-                                        onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">공시지가 합계</label><input
-                                        type="text" id="reg-gongsi-total" data-unit="won"
-                                        class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
-                                        onblur="Val.sync(this); calculatePropertyStats();"></div>
-                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(5년전)</label><input
-                                        type="text" id="reg-gongsi-5y" class="w-full border rounded p-1.5 text-xs"
-                                        data-unit="won" onblur="Val.sync(this); calculatePropertyStats();">
+                                <div class="bg-amber-50 p-1 rounded">
+                                    <label class="block text-[11px] font-black text-amber-800">토지면적(<span
+                                            class="unit-label"></span>)</label>
+                                    <input type="text" id="reg-total-land-area" data-unit="area"
+                                        onblur="Val.sync(this); calculatePropertyStats();"
+                                        class="w-full border-amber-200 rounded p-1.5 text-xs area-input">
                                 </div>
-                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(10년전)</label><input
-                                        type="text" id="reg-gongsi-10y" class="w-full border rounded p-1.5 text-xs"
-                                        data-unit="won" onblur="Val.sync(this); calculatePropertyStats();">
+                                <div><label class="text-[11px] font-bold text-gray-400">지목명</label>
+                                    <input type="text" id="reg-jimok" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">용도지역</label>
+                                    <input type="text" id="reg-zoning" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">토지이용상황</label>
+                                    <input type="text" id="reg-land-status" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">주용도코드명</label>
+                                    <input type="text" id="reg-main-code" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">지형/형상</label>
+                                    <input type="text" id="reg-shape" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">도로접면</label>
+                                    <input type="text" id="reg-road" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">기타용도내용</label>
+                                    <input type="text" id="reg-other-usage" data-unit="text" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(현재)</label>
+                                    <input type="text" id="reg-gongsi-cur" data-unit="gongsi"
+                                        onblur="Val.sync(this); calculatePropertyStats();"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">공시지가 합계</label>
+                                    <input type="text" id="reg-gongsi-total" data-unit="won"
+                                        class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(5년전)</label>
+                                    <input type="text" id="reg-gongsi-5y" data-unit="gongsi" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
+                                </div>
+                                <div><label class="text-[11px] font-bold text-gray-400">공시지가(10년전)</label>
+                                    <input type="text" id="reg-gongsi-10y" data-unit="gongsi" onblur="Val.sync(this)"
+                                        class="w-full border rounded p-1.5 text-xs">
                                 </div>
                             </div>
                         </section>
@@ -1138,42 +1187,53 @@
                             <section class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                                 <h4 class="text-sm font-bold text-gray-700 border-b pb-2">매각 유무</h4>
                                 <div class="grid grid-cols-2 gap-2">
-                                    <input type="text" id="reg-sale-date1" oninput="formatDate(this)" placeholder="매각일1"
-                                        class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-date1" data-unit="text" oninput="formatDate(this)"
+                                        onblur="Val.sync(this)" placeholder="매각일1" class="border rounded p-1.5 text-xs">
                                     <input type="text" id="reg-sale-amt1" data-unit="won"
-                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
-                                    <input type="text" id="reg-sale-date2" oninput="formatDate(this)" placeholder="매각일2"
-                                        class="border rounded p-1.5 text-xs" >
-                                    <input type="text" id="reg-sale-amt2" data-unit="won"
-                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
-                                    <input type="text" id="reg-sale-date3" oninput="formatDate(this)" placeholder="매각일3"
+                                        onblur="Val.sync(this); calculatePropertyStats();"
                                         class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-date2" data-unit="text" oninput="formatDate(this)"
+                                        onblur="Val.sync(this)" placeholder="매각일2" class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-amt2" data-unit="won"
+                                        onblur="Val.sync(this); calculatePropertyStats();"
+                                        class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-date3" data-unit="text" oninput="formatDate(this)"
+                                        onblur="Val.sync(this)" placeholder="매각일3" class="border rounded p-1.5 text-xs">
                                     <input type="text" id="reg-sale-amt3" data-unit="won"
-                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
+                                        onblur="Val.sync(this); calculatePropertyStats();"
+                                        class="border rounded p-1.5 text-xs">
                                     <div class="col-span-2"><label
-                                            class="text-[11px] font-bold text-gray-400">매각손익률(%)</label><input
-                                            type="text" id="reg-sale-profit"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
+                                            class="text-[11px] font-bold text-gray-400">매각손익률(%)</label>
+                                        <input type="text" id="reg-sale-profit" data-unit="rate"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                    </div>
                                 </div>
                             </section>
                             <section class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
                                 <h4 class="text-sm font-bold text-gray-700 border-b pb-2">네이버 광고</h4>
                                 <div class="grid grid-cols-2 gap-4">
-                                    <div><label class="text-[11px] font-bold text-gray-400">현재 광고가(억)</label><input
-                                            type="number" id="reg-naver-cur"
-                                            class="w-full border rounded p-1.5 text-xs"></div>
-                                    <div><label class="text-[11px] font-bold text-gray-400">과거 광고가(억)</label><input
-                                            type="number" id="reg-naver-past"
-                                            class="w-full border rounded p-1.5 text-xs"></div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">현재 광고가(억)</label>
+                                        <input type="text" id="reg-naver-cur" data-unit="eok"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs">
+                                    </div>
+                                    <div><label class="text-[11px] font-bold text-gray-400">과거 광고가(억)</label>
+                                        <input type="text" id="reg-naver-past" data-unit="eok"
+                                            onblur="Val.sync(this); calculatePropertyStats();"
+                                            class="w-full border rounded p-1.5 text-xs">
+                                    </div>
                                     <div class="col-span-2"><label class="text-[11px] font-bold text-gray-400">광고
-                                            상승률(%)</label><input type="text" id="reg-naver-rate"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
-                                    <div class="col-span-2"><label class="text-[10px] text-gray-400">빌탐정 광고
-                                            유무</label><select id="reg-builtamjung-ad"
+                                            상승률(%)</label>
+                                        <input type="text" id="reg-naver-rate" data-unit="rate"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
+                                    </div>
+                                    <div class="col-span-2"><label class="text-[10px] text-gray-400">빌탐정 광고 유무</label>
+                                        <select id="reg-builtamjung-ad" data-unit="text" onchange="Val.sync(this)"
                                             class="w-full border rounded p-1 text-[11px]">
                                             <option value="유">유</option>
                                             <option value="무">무</option>
-                                        </select></div>
+                                        </select>
+                                    </div>
                                 </div>
                             </section>
                         </div>
@@ -1325,7 +1385,7 @@
 
                 // 버튼 텍스트 변경
                 const unitText = document.getElementById('unitText');
-                unitText.innerText = isPyungMode ? "㎡" : "평";
+                unitText.innerText = isPyungMode ? "평" : "㎡";
 
                 // 테이블 다시 그리기 (렌더러가 호출됨)
                 if (hot) {
