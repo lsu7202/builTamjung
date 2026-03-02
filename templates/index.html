@@ -838,35 +838,39 @@
                                         class="fa-solid fa-circle-info text-blue-500 mr-2"></i>메인 정보</h4>
                                 <div class="grid grid-cols-2 gap-4">
                                     <div><label class="block text-[11px] font-bold text-gray-400">매매가(억)</label><input
-                                            type="number" id="reg-sale-price" step="0.1"
+                                            type="text" id="reg-sale-price" data-unit="eok"
                                             class="w-full border rounded p-1.5 text-xs bg-amber-50"
-                                            oninput="calculatePropertyStats()"></div>
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="block text-[11px] font-bold text-gray-400">수익률(%)</label><input
-                                            type="text" id="reg-yield"
+                                            type="text" id="reg-yield" data-unit="rate"
                                             class="w-full border rounded p-1.5 text-xs bg-gray-50 font-bold" readonly>
                                     </div>
                                     <div class="col-span-2 grid grid-cols-3 gap-2">
                                         <div><label class="text-[10px] text-gray-400">총보증금(만)</label><input
-                                                type="number" id="reg-total-security"
+                                                type="text" id="reg-total-security" data-unit="man"
                                                 class="w-full border rounded p-1 text-xs"
-                                                oninput="calculatePropertyStats()"></div>
-                                        <div><label class="text-[10px] text-gray-400">총월세(만)</label><input type="number"
-                                                id="reg-total-rent" class="w-full border rounded p-1 text-xs"
-                                                oninput="calculatePropertyStats()"></div>
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div><label class="text-[10px] text-gray-400">총월세(만)</label><input type="text"
+                                                id="reg-total-rent" data-unit="man" class="w-full border rounded p-1 text-xs"
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
                                         <div><label class="text-[10px] text-gray-400">총관리비(만)</label><input
-                                                type="number" id="reg-total-manage"
-                                                class="w-full border rounded p-1 text-xs"></div>
+                                                type="text" id="reg-total-manage" data-unit="man"
+                                                class="w-full border rounded p-1 text-xs"
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     </div>
                                     <div><label class="block text-[11px] font-bold text-gray-400">평단가(대지)</label><input
-                                            type="text" id="reg-price-land"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
+                                            type="text" id="reg-price-land" data-unit="man"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="block text-[11px] font-bold text-gray-400">평단가(연면적)</label><input
-                                            type="text" id="reg-price-total"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
+                                            type="text" id="reg-price-total" data-unit="man"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div class="col-span-1"><label
                                             class="block text-[11px] font-bold text-gray-400">공시가/매매가 비율</label><input
-                                            type="text" id="reg-gongsi-ratio"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
+                                            type="text" id="reg-gongsi-ratio" data-unit="rate"
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div class="col-span-1"><label
                                             class="block text-[11px] font-bold text-gray-400">매물번호</label><input
                                             type="text" id="reg-prop-id" class="w-full border rounded p-1.5 text-xs">
@@ -875,15 +879,16 @@
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="text-[11px] font-bold text-blue-800">자기자본 수익률 (<span
                                                     id="loan-amount-display">대출 0억</span>)</label>
-                                            <div id="reg-self-yield-display" class="font-black text-blue-700 text-sm">-%
+                                            <div id="reg-self-yield-display" class="font-black text-blue-700 text-sm" data-unit="rate">
                                             </div>
                                         </div>
-                                        <div class="flex gap-2"><input type="number" id="reg-invest-cash"
-                                                placeholder="현금(억)" class="w-1/2 border rounded p-1.5 text-xs"
-                                                oninput="calculatePropertyStats()"><input type="number"
-                                                id="reg-loan-rate" placeholder="이자(%)" step="0.1"
+                                        <div class="flex gap-2"><input type="text" id="reg-invest-cash"
+                                                 class="w-1/2 border rounded p-1.5 text-xs" data-unit="eok"
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                                <input type="text"
+                                                id="reg-loan-rate" placeholder="이자(%)" data-unit="rate"
                                                 class="w-1/2 border rounded p-1.5 text-xs"
-                                                oninput="calculatePropertyStats()"></div>
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-3 gap-2 pt-2">
@@ -991,22 +996,22 @@
                                                 class="w-full border rounded p-1.5 text-xs"></div>
                                     </div>
                                     <div><label class="text-[11px] font-bold text-gray-400">대지면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="number"
-                                            id="reg-land-area" class="w-full border rounded p-1.5 text-xs area-input"
-                                            oninput="calculatePropertyStats()"></div>
+                                                class="unit-label">㎡</span>)</label><input type="text"
+                                            id="reg-land-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="text-[11px] font-bold text-gray-400">건축면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="number"
-                                            id="reg-build-area" class="w-full border rounded p-1.5 text-xs area-input"
-                                            oninput="calculatePropertyStats()"></div>
+                                                class="unit-label">㎡</span>)</label><input type="text"
+                                            id="reg-build-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="text-[11px] font-bold text-gray-400">연면적(<span
-                                                class="unit-label">㎡</span>)</label><input type="number"
-                                            id="reg-total-area-val"
+                                                class="unit-label">㎡</span>)</label><input type="text"
+                                            id="reg-total-area-val" data-unit="area"
                                             class="w-full border rounded p-1.5 text-xs area-input"
-                                            oninput="calculatePropertyStats()"></div>
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="text-[11px] font-bold text-gray-400">용적률산정용(<span
-                                                class="unit-label">㎡</span>)</label><input type="number"
-                                            id="reg-far-area" class="w-full border rounded p-1.5 text-xs area-input"
-                                            oninput="calculatePropertyStats()"></div>
+                                                class="unit-label">㎡</span>)</label><input type="text"
+                                            id="reg-far-area" class="w-full border rounded p-1.5 text-xs area-input" data-unit="area"
+                                            onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     <div><label class="text-[11px] font-bold text-gray-400">엘리베이터/주차</label>
                                         <div class="flex gap-1"><input type="number" id="reg-elevator" placeholder="EL"
                                                 class="w-1/2 border rounded p-1.5 text-xs"><input type="number"
@@ -1024,21 +1029,24 @@
                                         <div><label class="text-[10px] text-gray-400">건폐율(%)</label><input type="text"
                                                 id="reg-bc-ratio"
                                                 class="w-full border rounded p-1 text-[11px] bg-gray-50 font-bold"
-                                                readonly></div>
-                                        <div><label class="text-[10px] text-gray-400">법정건폐율</label><input type="number"
-                                                id="reg-legal-bc" class="w-full border rounded p-1 text-[11px]"
-                                                oninput="calculatePropertyStats()"></div>
-                                        <div class="flex items-end"><input type="text" id="reg-bc-diff"
-                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly></div>
+                                                readonly data-unit="percent"
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div><label class="text-[10px] text-gray-400">법정건폐율</label><input type="text"
+                                                id="reg-legal-bc" class="w-full border rounded p-1 text-[11px]" data-unit="percent"
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div> <label class="text-[10px] text-gray-400">건폐율 - 법정건폐율</label><input type="text" id="reg-bc-diff" data-unit="rate"
+                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" 
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
                                         <div><label class="text-[10px] text-gray-400">용적률(%)</label><input type="text"
-                                                id="reg-far-ratio"
+                                                id="reg-far-ratio" data-unit="percent"
                                                 class="w-full border rounded p-1 text-[11px] bg-gray-50 font-bold"
-                                                readonly></div>
-                                        <div><label class="text-[10px] text-gray-400">법정용적률</label><input type="number"
-                                                id="reg-legal-far" class="w-full border rounded p-1 text-[11px]"
-                                                oninput="calculatePropertyStats()"></div>
-                                        <div class="flex items-end"><input type="text" id="reg-far-diff"
-                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly></div>
+                                                readonly onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div><label class="text-[10px] text-gray-400">법정용적률</label><input type="text"
+                                                id="reg-legal-far" class="w-full border rounded p-1 text-[11px]" data-unit="percent"
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
+                                        <div><label class="text-[10px] text-gray-400">용적률 - 법정용적률</label><input type="text" id="reg-far-diff" data-unit="rate"
+                                                class="w-full border rounded p-1 text-[11px] bg-gray-50" readonly
+                                                onblur="Val.sync(this); calculatePropertyStats();"></div>
                                     </div>
                                 </div>
                             </section>
@@ -1109,16 +1117,19 @@
                                 <div><label class="text-[11px] font-bold text-gray-400">기타용도내용</label><input type="text"
                                         id="reg-other-usage" class="w-full border rounded p-1.5 text-xs"></div>
                                 <div><label class="text-[11px] font-bold text-gray-400">공시지가(현재)</label><input
-                                        type="number" id="reg-gongsi-cur" class="w-full border rounded p-1.5 text-xs"
-                                        oninput="calculatePropertyStats()"></div>
+                                        type="text" id="reg-gongsi-cur" class="w-full border rounded p-1.5 text-xs" data-unit="won"
+                                        onblur="Val.sync(this); calculatePropertyStats();"></div>
                                 <div><label class="text-[11px] font-bold text-gray-400">공시지가 합계</label><input
-                                        type="text" id="reg-gongsi-total"
-                                        class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly></div>
+                                        type="text" id="reg-gongsi-total" data-unit="won"
+                                        class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly
+                                        onblur="Val.sync(this); calculatePropertyStats();"></div>
                                 <div><label class="text-[11px] font-bold text-gray-400">공시지가(5년전)</label><input
-                                        type="number" id="reg-gongsi-5y" class="w-full border rounded p-1.5 text-xs">
+                                        type="text" id="reg-gongsi-5y" class="w-full border rounded p-1.5 text-xs"
+                                        data-unit="won" onblur="Val.sync(this); calculatePropertyStats();">
                                 </div>
                                 <div><label class="text-[11px] font-bold text-gray-400">공시지가(10년전)</label><input
-                                        type="number" id="reg-gongsi-10y" class="w-full border rounded p-1.5 text-xs">
+                                        type="text" id="reg-gongsi-10y" class="w-full border rounded p-1.5 text-xs"
+                                        data-unit="won" onblur="Val.sync(this); calculatePropertyStats();">
                                 </div>
                             </div>
                         </section>
@@ -1129,16 +1140,16 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <input type="text" id="reg-sale-date1" oninput="formatDate(this)" placeholder="매각일1"
                                         class="border rounded p-1.5 text-xs">
-                                    <input type="number" id="reg-sale-amt1" placeholder="매각액1(억)"
-                                        class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-amt1" data-unit="won"
+                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
                                     <input type="text" id="reg-sale-date2" oninput="formatDate(this)" placeholder="매각일2"
-                                        class="border rounded p-1.5 text-xs">
-                                    <input type="number" id="reg-sale-amt2" placeholder="매각액2(억)"
-                                        class="border rounded p-1.5 text-xs">
+                                        class="border rounded p-1.5 text-xs" >
+                                    <input type="text" id="reg-sale-amt2" data-unit="won"
+                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
                                     <input type="text" id="reg-sale-date3" oninput="formatDate(this)" placeholder="매각일3"
                                         class="border rounded p-1.5 text-xs">
-                                    <input type="number" id="reg-sale-amt3" placeholder="매각액3(억)"
-                                        class="border rounded p-1.5 text-xs">
+                                    <input type="text" id="reg-sale-amt3" data-unit="won"
+                                        class="border rounded p-1.5 text-xs" onblur="Val.sync(this); calculatePropertyStats();">
                                     <div class="col-span-2"><label
                                             class="text-[11px] font-bold text-gray-400">매각손익률(%)</label><input
                                             type="text" id="reg-sale-profit"
