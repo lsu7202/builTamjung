@@ -8,7 +8,7 @@ from flask_compress import Compress  # 추가: Gzip 압축
 from flask.json.provider import JSONProvider
 import orjson
 from flask_migrate import Migrate
-from models import db, Users, Team, PropMemo, PropMain, setup_db_triggers
+from models import db, Users, Team, PropMemo, PropMain, SeoulLandInfo, UserSetting, setup_db_triggers
 from dotenv import load_dotenv
 from sqlalchemy import inspect
 
@@ -102,14 +102,14 @@ with app.app_context():
 
 # --- 필터 매핑 상수 ---
 FILTER_MAPPING = {
-    '매매가': '매매가억',
+    '매매가': '매매가',
     '공시지가': '공시지가',
     '입지': '입지',
     '긴급도': '긴급도',
     '대지면적': '대지면적',
     '연면적': '연면적',
     '건축면적': '건축면적',
-    '용적률산정용연면적': '용적률산정용연면적',
+    '용적률산정용연면적': '용적률산정연면적',
     '엘리베이터': '엘리베이터',
     '주차장': '주차장',
     '규모지상': '규모지상',
@@ -138,25 +138,20 @@ def normalize_date(val):
 def build_where_clause(filters, params):
     where_clauses = []
     
-    # 1. 고유번호 (PNU) 처리 - 리스트 형태 대응 및 LIKE 절 적용
+    # 1. 고유번호 (PNU) 처리 - 조인 시 모호성 방지를 위해 L. 붙임
     pnu_input = filters.get('고유번호', [])
-    
-    # 입력값이 단일 값(문자열/딕셔너리)일 경우를 대비해 리스트로 변환
     if isinstance(pnu_input, (str, dict)):
         pnu_input = [pnu_input]
     
     pnu_conds = []
     if pnu_input:
         for idx, p in enumerate(pnu_input):
-            # 딕셔너리 {'value': '...'} 또는 문자열에서 값 추출
             val = p.get('value', '') if isinstance(p, dict) else p
             if val and str(val).strip():
                 p_key = f"pnu_idx_{idx}"
-                # PNU 앞부분만으로도 검색 가능하도록 LIKE 사용 (전방 일치)
-                pnu_conds.append(f'"고유번호" LIKE :{p_key}')
+                pnu_conds.append(f'L."고유번호" LIKE :{p_key}') # 테이블 별칭 L 적용
                 params[p_key] = f"{str(val).strip()}%"
                 
-    # 여러 PNU 조건이 들어오면 OR로 묶음 (예: 역삼동 PNU OR 서초동 PNU)
     if pnu_conds:
         where_clauses.append(f"({' OR '.join(pnu_conds)})")
 
@@ -167,7 +162,7 @@ def build_where_clause(filters, params):
             db_col = FILTER_MAPPING.get(key, key)
             clean_values = [v.strip() for v in values if v.strip()]
             if clean_values:
-                or_conds = [f'"{db_col}" LIKE :multi_{key}_{idx}' for idx, val in enumerate(clean_values)]
+                or_conds = [f'L."{db_col}" LIKE :multi_{key}_{idx}' for idx, val in enumerate(clean_values)]
                 where_clauses.append(f"({' OR '.join(or_conds)})")
                 for idx, val in enumerate(clean_values):
                     params[f'multi_{key}_{idx}'] = f"%{val}%"
@@ -185,7 +180,6 @@ def build_where_clause(filters, params):
         db_col = FILTER_MAPPING.get(col_key, col_key)
         is_date_col = col_key in ['사용승인일', '대수선 및 리모델링']
         
-        # MIN/MAX 처리 (기존 로직 유지)
         for bound in ['min', 'max']:
             if bound in val_dict and str(val_dict[bound]).strip():
                 p_key = f"{bound}_{col_key.replace(' ', '_')}"
@@ -193,57 +187,41 @@ def build_where_clause(filters, params):
                 operator = ">=" if bound == 'min' else "<="
                 
                 if is_date_col:
-                    where_clauses.append(f'"{db_col}" {operator} :{p_key}')
+                    where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
                     params[p_key] = normalize_date(raw_val)
                 else:
                     try:
-                        # 1. 일단 파이썬에서 숫자로 바꿉니다 (필터값 검증)
                         val_float = float(raw_val)
                         params[p_key] = val_float
-                        
-                        # 2. 성능 최적화 비교 로직
                         if bound == 'min' and val_float == 0:
-                            # CAST 안 쓰고 컬럼 그대로 사용 (인덱스 활용)
-                            # min이 0일 때만 NULL인 데이터를 포함시킴
-                            where_clauses.append(f'("{db_col}" >= :{p_key} OR "{db_col}" IS NULL)')
+                            where_clauses.append(f'(L."{db_col}" >= :{p_key} OR L."{db_col}" IS NULL)')
                         else:
-                            # 일반적인 경우에는 그냥 비교 (이것도 인덱스 탐)
-                            where_clauses.append(f'"{db_col}" {operator} :{p_key}')
-                            
+                            where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
                     except (ValueError, TypeError):
-                        # 숫자가 아니면 어쩔 수 없이 원래 문자열대로 처리
-                        where_clauses.append(f'"{db_col}" {operator} :{p_key}')
+                        where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
                         params[p_key] = raw_val
-
-    # app.py 내 build_where_clause 함수의 매각 관련 로직 수정 (약 183행 부근)
 
     # 4. 매각일 및 매각 회수 복합 로직
     sales_count = filters.get('sales_count', 'all')
     if sales_min or sales_max or sales_count != 'all':
         sales_conds = []
-        
-        # [수정] 빈 문자열('') 대신 IS NOT NULL / IS NULL 사용
         if sales_count in ['1', '2', '3']:
             if sales_count == '3':
-                # 3회 매각: 1, 2, 3 모두 존재
-                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NOT NULL AND \"매각일3\" IS NOT NULL)")
+                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NOT NULL)")
             elif sales_count == '2':
-                # 2회 매각: 1, 2는 있고 3은 없음
-                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NOT NULL AND \"매각일3\" IS NULL)")
+                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NULL)")
             elif sales_count == '1':
-                # 1회 매각: 1만 있고 2, 3은 없음
-                sales_conds.append("(\"매각일1\" IS NOT NULL AND \"매각일2\" IS NULL AND \"매각일3\" IS NULL)")
+                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NULL AND L.\"매각일3\" IS NULL)")
         
         if sales_min or sales_max:
             range_parts = []
             for col in ["매각일1", "매각일2", "매각일3"]:
                 p_parts = []
-                # [수정] DB 컬럼이 Integer이므로 비교 값을 int()로 변환하여 전달
                 if sales_min:
-                    p_parts.append(f'"{col}" >= :s_min')
+                    p_parts.append(f'L."{col}" >= :s_min')
                     params['s_min'] = int(sales_min) 
                 if sales_max:
-                    p_parts.append(f'"{col}" <= :s_max')
+                    p_parts.append(f'L."{col}" <= :s_max')
                     params['s_max'] = int(sales_max)
                 range_parts.append(f"({' AND '.join(p_parts)})")
             sales_conds.append(f"({' OR '.join(range_parts)})")
@@ -251,12 +229,8 @@ def build_where_clause(filters, params):
         if sales_conds:
             where_clauses.append(f"({' AND '.join(sales_conds)})")
 
-    # --- 핵심 변경 사항: 조건이 없으면 무조건 0건 반환 ---
-    if where_clauses:
-        return " WHERE " + " AND ".join(where_clauses)
-    else:
-        # PNU 포함 어떤 조건도 없을 경우 쿼리가 데이터를 찾지 못하도록 강제
-        return " WHERE 1=0"
+    if where_clauses: return " WHERE " + " AND ".join(where_clauses)
+    else: return " WHERE 1=0"
 
 
 
@@ -275,6 +249,7 @@ def image_view():
     return render_template('image.html')
 
 # --- API 1: 데이터 조회 (테이블 표시용) ---
+# --- API 1: 데이터 조회 (테이블 표시용) ---
 @app.route('/api/get_data', methods=['POST'])
 def get_data():
     req = request.json
@@ -287,30 +262,33 @@ def get_data():
     sort_order = req.get('sort_order', 'ASC')
     
     params = {}
+    # build_where_clause 내부에서 이미 L."고유번호"와 같이 L 별칭을 사용함
     where_sql = build_where_clause(req, params)
 
-    # 정렬 SQL 생성
+    # [수정] 정렬 SQL에서 모든 컬럼에 테이블 접두사 명시 (AmbiguousColumn 오류 해결)
     if sort_col == '주소':
-        # "고유번호"(PNU)는 본번과 부번이 0019, 0001 처럼 4자리 숫자로 채워져 있어
-        # 사전식 정렬을 하더라도 결과적으로 숫자의 크기순(자연어 정렬)으로 정렬됩니다.
-        # 시군구 및 법정동 코드도 포함되어 있어 지역별 그룹화 정렬도 동시에 해결됩니다.
-        order_by_sql = 'ORDER BY "고유번호" ASC NULLS LAST'
+        order_by_sql = 'ORDER BY L."고유번호" ASC NULLS LAST'
     elif sort_col == '규모':
-        order_by_sql = 'ORDER BY (COALESCE("규모지상", 0) + COALESCE("규모지하", 0)) DESC'
+        # 기존 규모 정렬 로직 유지하되 접두사 L 추가
+        order_by_sql = 'ORDER BY (COALESCE(L."규모지상", 0) + COALESCE(L."규모지하", 0)) DESC'
     else:
         db_col = FILTER_MAPPING.get(sort_col, sort_col)
-        order_by_sql = f'ORDER BY "{db_col}" {sort_order} NULLS LAST'
+        # PropMain 소속인지 확인하여 정렬 기준 설정
+        prop_cols = {c.name for c in PropMain.__table__.columns}
+        prefix = "P" if db_col in prop_cols else "L"
+        order_by_sql = f'ORDER BY {prefix}."{db_col}" {sort_order} NULLS LAST'
     
     try:
         with engine.connect() as conn:
-            # 전체 개수 확인
-            count_sql = f"SELECT COUNT(*) FROM {TABLE_NAME}" + where_sql
+            # 전체 개수 확인 (JOIN 불필요하므로 기존 로직 유지하되 L 별칭 추가)
+            count_sql = f"SELECT COUNT(*) FROM {TABLE_NAME} L" + where_sql
             total_count = conn.execute(text(count_sql), params).scalar()
 
-            # 정렬 및 페이징이 포함된 데이터 조회
+            # [핵심] LEFT JOIN 쿼리 (FROM seoul_land_info L 로 별칭 부여)
             data_sql = f"""
-                SELECT *, ctid 
-                FROM {TABLE_NAME} 
+                SELECT L.*, P.*, L."고유번호" as "pnu_key"
+                FROM {TABLE_NAME} L
+                LEFT JOIN prop_main P ON L."고유번호" = P."고유번호"
                 {where_sql} 
                 {order_by_sql} 
                 LIMIT :limit OFFSET :offset
@@ -332,6 +310,7 @@ def get_data():
         return jsonify({"error": str(e)}), 500
     
 # app.py 내 get_map_data API 부분 수정
+# app.py 내 get_map_data API 부분 수정
 @app.route('/api/get_map_data', methods=['POST'])
 def get_map_data():
     req = request.json
@@ -343,22 +322,20 @@ def get_map_data():
         "minY": bounds['minY'], "maxY": bounds['maxY']
     }
 
-    # 필터 WHERE 절 생성 (조건 없으면 WHERE 1=0 반환됨)
+    # 필터 WHERE 절 생성 (L. 별칭 사용됨)
     where_sql = build_where_clause(req, params)
 
-    # 공간 검색 조건 결합
-    spatial_cond = "geom && ST_MakeEnvelope(:minX, :minY, :maxX, :maxY, 4326)"
+    # [수정] 공간 검색 조건에도 L. 접두사 적용하여 모호성 제거
+    spatial_cond = "L.geom && ST_MakeEnvelope(:minX, :minY, :maxX, :maxY, 4326)"
     
-    # [수정] WHERE 절이 이미 존재하므로 AND로 결합
     final_sql = f"{where_sql} AND {spatial_cond}"
 
-    sql_query = f"SELECT x, y, \"주소\" FROM {TABLE_NAME} {final_sql} LIMIT 3000"
+    # [수정] FROM {TABLE_NAME} 뒤에 L 별칭 추가 (UndefinedTable 오류 해결)
+    sql_query = f"SELECT L.x, L.y, L.\"주소\" FROM {TABLE_NAME} L {final_sql} LIMIT 3000"
     
-    # --- [디버깅 로그] 터미널에서 확인 가능 ---
     app.logger.info("=== [MAP DATA QUERY] ===")
     app.logger.info(f"Generated SQL: {sql_query}")
     app.logger.info(f"Parameters: {params}")
-    # ---------------------------------------
 
     try:
         with engine.connect() as conn:
@@ -368,8 +345,6 @@ def get_map_data():
     except Exception as e:
         app.logger.error(f"Map Data SQL Error: {e}")
         return jsonify([]), 500
-    
-# app.py에 추가 또는 수정
 
 from sqlalchemy import func
 
@@ -403,7 +378,7 @@ def get_prop_main():
         "고유번호": prop.pnu,
         "담당자": prop.manager_Id,
         "진행상태": prop.progress,
-        "매매가억": float(prop.sale_price_billon) if prop.sale_price_billon else None,
+        "매매가": float(prop.sale_price_billon) if prop.sale_price_billon else None,
         "대지면적평단가": float(prop.sale_price_by_land_area) if prop.sale_price_by_land_area else None,
         "연면적평단가": float(prop.sale_price_by_floor_area) if prop.sale_price_by_floor_area else None,
         "총보증금": float(prop.total_security) if prop.total_security else None,
@@ -412,6 +387,8 @@ def get_prop_main():
         "수익률": prop.yield_rate,
         "공실제외수익률": prop.except_empty_yield,
         "자기자본수익률": prop.self_yield,
+        "자기자본": prop.invest_cash,
+        "이자율": prop.loan_rate,
         "긴급도": prop.urgency,
         "등급": prop.grade,
         "입지": prop.location_quality,
@@ -429,7 +406,6 @@ def get_prop_main():
         "접수일": prop.proped_date.isoformat() if prop.proped_date else None,
         "영상번호분초": prop.video_timestamp,
         "매수의향서": prop.intent_to_buy,
-        "memo": prop.memo,
         "빌탐정광고등록유무": prop.toad_ad
     }
     return jsonify({"success": True, "data": result}), 200
@@ -451,7 +427,7 @@ def save_prop_main():
         # 데이터 업데이트 (JS에서 보낸 한글 키를 모델 필드에 매칭)
         prop.manager_Id = data.get('담당자')
         prop.progress = data.get('진행상태')
-        prop.sale_price_billon = data.get('매매가억')
+        prop.sale_price_billon = data.get('매매가')
         prop.sale_price_by_land_area = data.get('대지면적평단가')
         prop.sale_price_by_floor_area = data.get('연면적평단가')
         prop.total_security = data.get('총보증금')
@@ -527,48 +503,61 @@ def get_propDetail_data():
         print(f"Error fetching property details: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
     
-# app.py 내 save_property API 수정
-@app.route('/api/save_property', methods=['POST'])
-def save_property():
-    data = request.get_json()
-    pnu = data.get('고유번호')
-    floors = data.get('floors')
-
+@app.route('/api/register_property_final', methods=['POST'])
+def register_property_final():
+    data = request.json
+    pnu = data.get('pnu')
     if not pnu:
-        return jsonify({"error": "주소가 없습니다."}), 400
+        return jsonify({"success": False, "message": "PNU 누락"}), 400
 
     try:
-        with engine.begin() as conn: # engine.begin()은 자동 커밋을 지원합니다.
-            # 1. 기존 이 주소로 등록된 매물 상세 정보를 모두 삭제 (새로 고침 방식)
-            # 수동 추가 방식이므로, 기존 데이터를 지우고 현재 화면의 데이터를 넣는 것이 가장 깔끔합니다.
+        with engine.begin() as conn: # 트랜잭션 시작
+            # 1. PropMain (매물 정보) 업데이트
+            m = data.get('main')
+            upsert_prop = text("""
+                INSERT INTO prop_main ("고유번호", "담당자", "진행상태", "매매가", "총보증금", "총월세부가세별도", "총관리비", 
+                "긴급도", "등급", "입지", "건물용도", "사진", "브리핑", "명도", "멸실", "용도변경", "소유자타입", "소유자명", 
+                "전화번호", "성향", "관계", "접수일", "영상번호분초", "매수의향서", "빌탐정광고등록유무", "대지면적평단가", "연면적평단가", "수익률", "공실제외수익률","자기자본수익률", "자기자본","이자율")
+                VALUES (:pnu, :manager, :status, :price, :sec, :rent, :mgmt, :urgency, :grade, :loc, :usage, :photo, 
+                :brief, :evict, :demo, :u_change, :o_type, :o_name, :contact, :inclined, :rel, :p_date, :video, :intent, :toad, :price_land, :price_total, :yield, :yield_current, :yield_self, :invest_cash, :loan_rate)
+                ON CONFLICT ("고유번호") DO UPDATE SET
+                "담당자" = EXCLUDED."담당자", "진행상태" = EXCLUDED."진행상태", "매매가" = EXCLUDED."매매가", 
+                "총보증금" = EXCLUDED."총보증금", "총월세부가세별도" = EXCLUDED."총월세부가세별도", "총관리비" = EXCLUDED."총관리비",
+                "긴급도" = EXCLUDED."긴급도", "등급" = EXCLUDED."등급", "입지" = EXCLUDED."입지", "건물용도" = EXCLUDED."건물용도",
+                "사진" = EXCLUDED."사진", "브리핑" = EXCLUDED."브리핑", "명도" = EXCLUDED."명도", "멸실" = EXCLUDED."멸실",
+                "용도변경" = EXCLUDED."용도변경", "소유자타입" = EXCLUDED."소유자타입", "소유자명" = EXCLUDED."소유자명",
+                "전화번호" = EXCLUDED."전화번호", "성향" = EXCLUDED."성향", "관계" = EXCLUDED."관계", "접수일" = EXCLUDED."접수일",
+                "영상번호분초" = EXCLUDED."영상번호분초", "매수의향서" = EXCLUDED."매수의향서", "빌탐정광고등록유무" = EXCLUDED."빌탐정광고등록유무", "대지면적평단가" = EXCLUDED."대지면적평단가", "연면적평단가" = EXCLUDED."연면적평단가", "수익률" = EXCLUDED."수익률", "공실제외수익률" = EXCLUDED."공실제외수익률", "자기자본수익률" = EXCLUDED."자기자본수익률", "자기자본" = EXCLUDED."자기자본", "이자율" = EXCLUDED."이자율"
+            """)
+            conn.execute(upsert_prop, {**m, "pnu": pnu})
+
+            # 2. SeoulLandInfo (건물/토지 물리 정보) 업데이트
+            l = data.get('land')
+            update_land = text("""
+                UPDATE seoul_land_info SET
+                "규모지상" = :f_above, "규모지하" = :f_below, "대지면적" = :b_area, "건축면적" = :a_area, "연면적" = :t_area,
+                "용적률산정연면적" = :far_area, "엘리베이터" = :elev, "주차장" = :park, "사용승인일" = :a_date, "대수선및리모델링" = :r_date,
+                "법정건폐율" = :l_bc, "법정용적률" = :l_far, "토지면적" = :land_area, "지목" = :jimok, "용도지역" = :zoning,
+                "토지이용상황" = :status, "주용도" = :main_usage, "형상" = :shape, "도로" = :road, "기타용도" = :other,
+                "공시지가" = :g_cur, "공시지가5년전" = :g_5y, "공시지가10년전" = :g_10y,
+                "매각일1" = :s_d1, "매각액1" = :s_a1, "매각일2" = :s_d2, "매각액2" = :s_a2, "매각일3" = :s_d3, "매각액3" = :s_a3,
+                "네이버광고" = :n_cur, "네이버광고과거" = :n_past, "소유자현재" = :o_current
+                WHERE "고유번호" = :pnu
+            """)
+            conn.execute(update_land, {**l, "pnu": pnu})
+
+            # 3. PropDetails (층별 상세) 갱신
             conn.execute(text("DELETE FROM prop_details WHERE \"고유번호\" = :pnu"), {"pnu": pnu})
+            for f in data.get('floors', []):
+                conn.execute(text("""
+                    INSERT INTO prop_details ("고유번호", "층", "형태", "평수", "보증금", "임대료", "월관리비", "임대차기간", "공실유무")
+                    VALUES (:pnu, :floor, :form, :size, :sec, :rent, :mgmt, :period, :isEmpty)
+                """), {**f, "pnu": pnu})
 
-            # 2. 새로운 데이터 삽입
-            if floors:
-                insert_sql = text("""
-                    INSERT INTO prop_details 
-                    ("고유번호", "층", "형태", "평수", "보증금", "임대료", "월관리비", "임대차기간", "공실유무")
-                    VALUES (:pnu, :floor, :type, :area, :security, :rent, :management, :lease_period, :isEmpty)
-                """)
-                
-                for item in floors:
-                    conn.execute(insert_sql, {
-                        "pnu": pnu,
-                        "floor": item['floor'],
-                        "type": item['type'],
-                        "area": item['area'] or 0,
-                        "security": item['security'] or 0,
-                        "rent": item['rent'] or 0,
-                        "management": item['management'] or 0,
-                        "lease_period": item['lease_period'] or "",
-                        "isEmpty": item['isEmpty'] or True
-                    })
-
-        return jsonify({"status": "success", "message": "성공적으로 저장되었습니다."}), 200
-
+        return jsonify({"success": True, "message": "모든 데이터가 한 개도 빠짐없이 저장되었습니다."})
     except Exception as e:
-        app.logger.error(f"Save Property Error: {e}")
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Final Save Error: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
     
             
     
@@ -637,6 +626,7 @@ def bulk_update_sales_by_address():
         app.logger.error(f"Bulk Update Error: {e}")
         return jsonify({"error": str(e)}), 500
 # --- API 2: 대기열용 전체 주소 조회 (중복 제거) ---
+# --- API 2: 대기열용 전체 주소 조회 (중복 제거) ---
 @app.route('/api/get_all_addresses', methods=['POST'])
 def get_all_addresses():
     req = request.json
@@ -645,10 +635,9 @@ def get_all_addresses():
     
     try:
         with engine.connect() as conn:
-            # 통합주소만 중복 없이 조회
-            sql = f"SELECT DISTINCT \"통합주소\" FROM {TABLE_NAME}" + where_sql
+            # [수정] FROM seoul_land_info L 로 별칭 추가
+            sql = f"SELECT DISTINCT L.\"통합주소\" FROM {TABLE_NAME} L" + where_sql
             result = conn.execute(text(sql), params)
-            # 리스트 형태로 반환
             addresses = [row[0] for row in result.fetchall()]
             return jsonify(addresses)
     except Exception as e:
@@ -706,12 +695,12 @@ def update_price_by_address():
             UPDATE {TABLE_NAME} 
             SET "AI추정가" = CAST(:AI추정가 AS TEXT),
                 "AI추정가매매가비율" = CASE 
-                    WHEN "매매가억" IS NOT NULL AND "매매가억" != ''
-                         AND CAST(NULLIF(REGEXP_REPLACE("매매가억", '[^0-9.]', '', 'g'), '') AS NUMERIC) > 0 
+                    WHEN "매매가" IS NOT NULL AND "매매가" != ''
+                         AND CAST(NULLIF(REGEXP_REPLACE("매매가", '[^0-9.]', '', 'g'), '') AS NUMERIC) > 0 
                     THEN ROUND(
                         -- (원 단위 정수 / 100,000,000) 하여 '억' 단위로 맞춘 후 비율 계산
                         (CAST(:AI추정가 AS NUMERIC) / 100000000) / 
-                        CAST(NULLIF(REGEXP_REPLACE("매매가억", '[^0-9.]', '', 'g'), '') AS NUMERIC) * 100
+                        CAST(NULLIF(REGEXP_REPLACE("매매가", '[^0-9.]', '', 'g'), '') AS NUMERIC) * 100
                     , 2)
                     ELSE "AI추정가매매가비율"
                 END
@@ -741,96 +730,89 @@ VALID_DB_COLUMNS = get_table_columns()
 
 @app.route('/api/update_data', methods=['POST'])
 def update_data():
+    """
+    Handsontable의 변경 사항을 DB에 실시간 저장.
+    수정된 필드명에 따라 SeoulLandInfo 또는 PropMain 테이블로 자동 분기.
+    """
     data_list = request.json
     if not data_list: return jsonify({"error": "No data"}), 400
     
-    # 만약 서버 실행 중 테이블 구조가 바뀌었을 수 있으므로 
-    # VALID_DB_COLUMNS가 비어있다면 다시 가져오게 할 수 있습니다.
-    global VALID_DB_COLUMNS
-    if not VALID_DB_COLUMNS:
-        VALID_DB_COLUMNS = get_table_columns()
+    # 1. 모델에서 유효한 컬럼 리스트 추출 (고유번호 자체는 업데이트 대상에서 제외)
+    PROP_COLS = {c.name for c in PropMain.__table__.columns if not c.primary_key and c.name != "고유번호"}
+    LAND_COLS = {c.name for c in SeoulLandInfo.__table__.columns if not c.primary_key and c.name != "고유번호"}
 
     try:
         with engine.begin() as conn:
             for row in data_list:
-                ctid = row.pop('ctid', None)
-                if not ctid: continue
-                row.pop('통합주소', None) 
+                pnu = row.get('고유번호')
+                if not pnu: continue
                 
-                # --- [추가/수정] 매매가 관련 계산 로직 유지 ---
-                if '매매가억' in row:
-                    try:
-                        price_val = str(row.get('매매가억')).replace(',', '').strip()
-                        price = float(price_val) if price_val else 0.0
-                        base_val = str(row.get('공시지가기준') or '').replace(',', '').strip()
-                        base_price = float(base_val) if base_val else 0.0
-                        if base_price > 0:
-                            row['총공시지가와매매가비율'] = round((price / base_price) * 100, 2)
-                        row['매매가억'] = price
-                    except: pass
+                # 2. PropMain(매물정보) 업데이트 (Upsert)
+                # '매매가', '진행상태' 등 사용자가 수정한 값
+                prop_update = {k: v for k, v in row.items() if k in PROP_COLS}
+                if prop_update:
+                    cols = ", ".join([f'"{k}"' for k in prop_update.keys()])
+                    vals = ", ".join([f':{k}' for k in prop_update.keys()])
+                    upds = ", ".join([f'"{k}" = EXCLUDED."{k}"' for k in prop_update.keys()])
+                    
+                    query = text(f"""
+                        INSERT INTO prop_main ("고유번호", {cols})
+                        VALUES (:pnu, {vals})
+                        ON CONFLICT ("고유번호") DO UPDATE SET {upds}
+                    """)
+                    conn.execute(query, {**prop_update, "pnu": pnu})
 
-                # --- [핵심 수정] DB에 실제 존재하는 컬럼만 필터링 ---
-                # row의 키들 중 VALID_DB_COLUMNS에 있는 것만 추출
-                filtered_row = {k: v for k, v in row.items() if k in VALID_DB_COLUMNS}
-                
-                if not filtered_row: continue
-
-                # SET 구문 생성 (필터링된 결과 사용)
-                set_clauses = [f'"{k}" = :{k}' for k in filtered_row.keys()]
-                query = text(f"UPDATE {TABLE_NAME} SET {', '.join(set_clauses)} WHERE ctid = :ctid")
-                
-                # 쿼리 실행용 파라미터 구성
-                params = filtered_row.copy()
-                params['ctid'] = ctid
-                
-                conn.execute(query, params)
+                # 3. SeoulLandInfo(토지정보) 업데이트
+                # '대지면적', '공시지가', '규모지상' 등 공공데이터 정보
+                land_update = {k: v for k, v in row.items() if k in LAND_COLS}
+                if land_update:
+                    set_sql = ", ".join([f'"{k}" = :{k}' for k in land_update.keys()])
+                    query = text(f'UPDATE seoul_land_info SET {set_sql} WHERE "고유번호" = :pnu')
+                    conn.execute(query, {**land_update, "pnu": pnu})
                 
         return jsonify({"status": "success"})
     except Exception as e:
         app.logger.error(f"Update Data API Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# --- API 5: 위시리스트 관리 ---
-@app.route('/api/wishlist', methods=['GET', 'POST', 'DELETE'])
-def manage_wishlist():
-    try:
-        if request.method == 'GET':
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT * FROM wishlist ORDER BY created_at DESC"))
-                rows = result.mappings().all()
-                return jsonify({row['address']: {'color': row['color'], 'group_name': row.get('group_name', '기본'), 'note': row.get('note', '')} for row in rows})
-        elif request.method == 'POST':
-            data = request.json
-            with engine.begin() as conn:
-                conn.execute(text("CREATE TABLE IF NOT EXISTS wishlist (address VARCHAR(255) PRIMARY KEY, color VARCHAR(50), group_name VARCHAR(100), note TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"))
-                conn.execute(text("INSERT INTO wishlist (address, color, group_name, note) VALUES (:addr, :col, :grp, :note) ON CONFLICT (address) DO UPDATE SET color = :col, group_name = :grp, note = :note"), 
-                             {'addr': data.get('address'), 'col': data.get('color', '#ffff00'), 'grp': data.get('group_name', '기본'), 'note': data.get('note', '')})
-            return jsonify({"status": "success"})
-        elif request.method == 'DELETE':
-            data = request.json
-            with engine.begin() as conn:
-                conn.execute(text("DELETE FROM wishlist WHERE address = :addr"), {'addr': data.get('address')})
-            return jsonify({"status": "success"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
-# --- API 6: 컬럼 설정 ---
+
 @app.route('/api/settings/columns', methods=['GET', 'POST'])
 def column_settings():
+    """
+    로그인한 유저별로 독립된 컬럼 설정(순서)을 저장하거나 불러옵니다.
+    """
+    # 1. 세션에서 현재 로그인된 유저 식별
+    u_id = session.get('user_id')
+    if not u_id:
+        return jsonify({"error": "로그인이 필요합니다."}), 401
+    
     key = "column_order_v1"
+    
     try:
         if request.method == 'POST':
             columns = request.json.get('columns')
-            with engine.begin() as conn:
-                conn.execute(text("CREATE TABLE IF NOT EXISTS user_settings (setting_key VARCHAR(100) PRIMARY KEY, setting_value TEXT)"))
-                conn.execute(text("INSERT INTO user_settings (setting_key, setting_value) VALUES (:key, :val) ON CONFLICT (setting_key) DO UPDATE SET setting_value = :val"), {'key': key, 'val': json.dumps(columns)})
+            # 2. 기존 설정이 있는지 확인 (Upsert 로직)
+            setting = UserSetting.query.filter_by(user_id=u_id, setting_key=key).first()
+            if not setting:
+                setting = UserSetting(user_id=u_id, setting_key=key)
+                db.session.add(setting)
+            
+            # JSON 배열을 문자열로 변환하여 저장
+            setting.setting_value = json.dumps(columns)
+            db.session.commit()
             return jsonify({"status": "success"})
+            
         elif request.method == 'GET':
-            with engine.connect() as conn:
-                result = conn.execute(text("SELECT setting_value FROM user_settings WHERE setting_key = :key"), {'key': key})
-                row = result.fetchone()
-                return jsonify(json.loads(row[0]) if row else [])
+            # 3. 로그인한 유저의 설정값만 반환
+            setting = UserSetting.query.filter_by(user_id=u_id, setting_key=key).first()
+            if setting and setting.setting_value:
+                return jsonify(json.loads(setting.setting_value))
+            return jsonify([]) # 설정이 없으면 빈 배열 반환
+            
     except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"컬럼 설정 오류: {e}")
         return jsonify({"error": str(e)}), 500
     
 # app.py 내 해당 API를 아래 내용으로 교체하세요.

@@ -145,8 +145,10 @@ async function fillPropertyDataHandler() {
     const rs = await searchPropertyData();
     if (!rs) return;
     const { main, details, prop } = rs;
-    PNU = main.고유번호;
     const session = await loadSessionInfo();
+
+    PNU = main.pnu_key;
+    if(PNU) document.getElementById('btn-submit-property').disabled = false;
 
     // [1] 세부 정보 및 담당자 (Val.set 통일)
     Val.set('reg-manager', prop.담당자 || session.user_name || "");
@@ -158,14 +160,16 @@ async function fillPropertyDataHandler() {
     Val.set('reg-proped-date', prop.접수일 || new Intl.DateTimeFormat('fr-CA').format(new Date()));
     Val.set('reg-intent-to-buy', prop.매수의향서 || "");
     Val.set('reg-video-timestamp', prop.영상번호분초 || "");
-    Val.set('reg-owner-details', prop.소유자현재 || "");
+    Val.set('reg-owner-details', main.소유자현재 || "");
 
     // [2] 메인 정보
-    Val.set('reg-sale-price', prop.매매가억 || 0);
+    Val.set('reg-sale-price', prop.매매가 || 0);
     Val.set('reg-total-security', prop.총보증금 || 0);
     Val.set('reg-total-rent', prop.총월세부가세별도 || 0);
     Val.set('reg-total-manage', prop.총관리비 || 0);
     Val.set('reg-prop-id', prop.매물번호 || "");
+    Val.set('reg-invest-cash', prop.자기자본 || "");
+    Val.set('reg-loan-rate', prop.이자율 || "");
 
     // [3] 진행 및 등급
     Val.set('reg-status', prop.진행상태 || "준비");
@@ -205,6 +209,7 @@ async function fillPropertyDataHandler() {
     Val.set('reg-gongsi-cur', main.공시지가 || 0);
     Val.set('reg-gongsi-5y', main.공시지가5년전 || 0);
     Val.set('reg-gongsi-10y', main.공시지가10년전 || 0);
+    
 
     // [6] 매각 및 광고
     Val.set('reg-sale-date1', main.매각일1 || ""); Val.set('reg-sale-amt1', main.매각액1 || 0);
@@ -401,6 +406,121 @@ async function loadMemos(pnu) {
         });
     } catch (e) {
         console.error("메모 로드 중 오류:", e);
+    }
+}
+
+/**
+ * [내 매물] 탭의 모든 정보를 수집하여 서버로 전송합니다.
+ */
+async function registerProperty() {
+    if (!PNU) return alert("매물 정보를 먼저 불러와야 저장할 수 있습니다.");
+
+    // [필수] 모든 필드 수집 (하나라도 누락 시 DB에서 덮어씌워질 위험 방지)
+    const payload = {
+        pnu: PNU,
+        main: {
+            manager: Val.get('reg-manager'), 
+            o_type: Val.get('reg-owner-type'), 
+            o_name: Val.get('reg-owner-name'),
+            contact: Val.get('reg-contact'), 
+            rel: Val.get('reg-relationship'), 
+            inclined: Val.get('reg-inclination'),
+            p_date: Val.get('reg-proped-date') || null, 
+            intent: Val.get('reg-intent-to-buy'), 
+            video: Val.get('reg-video-timestamp'),
+            price: Val.get('reg-sale-price'), 
+            sec: Val.get('reg-total-security'),
+            rent: Val.get('reg-total-rent'), 
+            mgmt: Val.get('reg-total-manage'), 
+            status: Val.get('reg-status'),
+            urgency: Val.get('reg-urgency'), 
+            loc: Val.get('reg-location'), 
+            grade: Val.get('reg-grade'),
+            usage: Val.get('reg-b-usage'), 
+            photo: Val.get('reg-has-photo'), 
+            brief: Val.get('reg-has-brief'),
+            evict: Val.get('reg-eviction'), 
+            u_change: Val.get('reg-usage-change'), 
+            demo: Val.get('reg-demolition'),
+            toad: Val.get('reg-builtamjung-ad'),
+            yield: Val.get('reg-yield'),
+            yield_current: Val.get('sum-yield-current'),
+            yield_self: Val.get('reg-self-yield-display'),
+            invest_cash: Val.get('reg-invest-cash'),
+            loan_rate: Val.get('reg-loan-rate'),
+            price_land: Val.get('reg-price-land'),
+            price_total: Val.get('reg-price-total')
+
+        },
+        land: {
+            f_above: Val.get('reg-floor-above'), 
+            f_below: Val.get('reg-floor-below'), 
+            b_area: Val.get('reg-land-area'),
+            a_area: Val.get('reg-build-area'), 
+            t_area: Val.get('reg-total-area-val'), 
+            far_area: Val.get('reg-far-area'),
+            elev: Val.get('reg-elevator'), 
+            park: Val.get('reg-parking'), 
+            a_date: Val.get('reg-approval-date'),
+            r_date: Val.get('reg-remodel-date'), 
+            l_bc: Val.get('reg-legal-bc'), 
+            l_far: Val.get('reg-legal-far'),
+            land_area: Val.get('reg-total-land-area'), 
+            jimok: Val.get('reg-jimok'), 
+            zoning: Val.get('reg-zoning'),
+            status: Val.get('reg-land-status'), 
+            main_usage: Val.get('reg-main-code'), 
+            shape: Val.get('reg-shape'),
+            road: Val.get('reg-road'), 
+            other: Val.get('reg-other-usage'), 
+            g_cur: Val.get('reg-gongsi-cur'),
+            g_5y: Val.get('reg-gongsi-5y'), 
+            g_10y: Val.get('reg-gongsi-10y'),
+            s_d1: Val.get('reg-sale-date1'), 
+            s_a1: Val.get('reg-sale-amt1'), 
+            s_d2: Val.get('reg-sale-date2'), 
+            s_a2: Val.get('reg-sale-amt2'), 
+            s_d3: Val.get('reg-sale-date3'), 
+            s_a3: Val.get('reg-sale-amt3'),
+            n_cur: Val.get('reg-naver-cur'), 
+            n_past: Val.get('reg-naver-past'),
+            o_current: Val.get('reg-owner-details')
+        },
+        floors: []
+    };
+
+    // 층별 상세 데이터 수집
+    document.querySelectorAll('.property-row').forEach(row => {
+        const inps = row.querySelectorAll('input, select');
+        payload.floors.push({
+            floor: inps[0].value, 
+            form: inps[1].value, 
+            size: parseFloat(inps[2].value) || 0,
+            sec: (parseFloat(inps[3].value.replace(/,/g, '')) || 0) * 10000, 
+            rent: (parseFloat(inps[4].value.replace(/,/g, '')) || 0) * 10000,
+            mgmt: (parseFloat(inps[5].value.replace(/,/g, '')) || 0) * 10000,
+            period: inps[6].value, 
+            isEmpty: inps[7].value === "유"
+        });
+    });
+
+    // 서버 요청
+    try {
+        const res = await fetch('/api/register_property_final', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result.success) {
+            alert(result.message);
+            // 저장 후 메인 테이블 데이터와 동기화
+            if (typeof fetchData === 'function') fetchData(currentPage); 
+        } else {
+            throw new Error(result.message);
+        }
+    } catch (e) {
+        alert("데이터 저장 중 오류가 발생했습니다: " + e.message);
     }
 }
 

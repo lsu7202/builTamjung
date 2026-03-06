@@ -481,36 +481,265 @@
                         </div>
                     </section>
 
-                    <section>
+                    <section class="space-y-1">
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
-                        <div id="detailSelectGrid" class="space-y-1"></div>
-                        <div id="detailTagContainer" class="tag-box"><span class="text-[10px] text-gray-300"></span>
+                        <div class="filter-row">
+                            <label class="filter-label">담당자</label>
+                            <select class="range-input" data-col="담당자">
+                                <option value="None"></option>
+                                <option value="나">나</option>
+                                <option value="팀">팀</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">소유자종류</label>
+                            <select class="range-input" data-col="소유자종류">
+                                <option value="None"></option>
+                                <option value="개인">개인</option>
+                                <option value="법인">법인</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">소유자명</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="소유자명">
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">전화번호</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="전화번호">
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">관계</label>
+                            <select class="range-input" data-col="관계">
+                                <option value="None"></option>
+                                <option value="건물주/법인대표">건물주/법인대표</option>
+                                <option value="관리자">관리자</option>
+                                <option value="친인척">친인척</option>
+                                <option value="부동산">부동산</option>
+                                <option value="기타">기타</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">성향</label>
+                            <select class="range-input" data-col="성향">
+                                <option value="None"></option>
+                                <option value="협조적">협조적</option>
+                                <option value="비협조적">비협조적</option>
+                                <option value="친절">친절</option>
+                                <option value="불친절">불친절</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">접수일</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input" data-col="접수일"
+                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
+                                    data-col="접수일" oninput="formatDate(this)">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">매수의향서</label>
+                            <select class="range-input" data-col="매수의향서">
+                                <option value="None"></option>
+                                <option value="원함">원함</option>
+                                <option value="원치않음">원치않음</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">영상번호분초</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="영상번호분초">
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">소유자현황</label>
+                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="소유자현황">
                         </div>
                     </section>
 
                     <section class="space-y-1">
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
                         <div class="filter-row">
-                            <label class="filter-label">매매가(억)</label>
+                            <label class="filter-label">매물번호</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="매물번호">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">매매가</label>
                             <div class="range-wrapper">
                                 <input type="number" class="range-input" data-col="매매가"><span>~</span><input
                                     type="number" class="range-input" data-col="매매가">
                             </div>
                         </div>
                         <div class="filter-row">
-                            <label class="filter-label">공시지가</label>
+                            <label class="filter-label">수익률</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가"><span>~</span><input
-                                    type="number" class="range-input" data-col="공시지가">
+                                <input type="number" class="range-input" data-col="수익률"><span>~</span><input
+                                    type="number" class="range-input" data-col="수익률">
                             </div>
                         </div>
                         <div class="filter-row">
-                            <label class="filter-label">입지</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="입지">
+                            <label class="filter-label">공실제외수익률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공실제외수익률"><span>~</span><input
+                                    type="number" class="range-input" data-col="공실제외수익률">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">자기자본수익률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="자기자본수익률"><span>~</span><input
+                                    type="number" class="range-input" data-col="자기자본수익률">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">총보증금</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="총보증금"><span>~</span><input
+                                    type="number" class="range-input" data-col="총보증금">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">총임대료</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="총임대료"><span>~</span><input
+                                    type="number" class="range-input" data-col="총임대료">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">총관리비</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="총관리비"><span>~</span><input
+                                    type="number" class="range-input" data-col="총관리비">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">총공시지가와매매가비율</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="총공시지가와매매가비율"><span>~</span><input
+                                    type="number" class="range-input" data-col="총공시지가와매매가비율">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">평단가(대지면적)</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="대지면적평단가"><span>~</span><input
+                                    type="number" class="range-input" data-col="대지면적평단가">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">평단가(연면적)</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="연면적평단가"><span>~</span><input
+                                    type="number" class="range-input" data-col="연면적평단가">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">진행상태</label>
+                            <select class="range-input" data-col="진행상태">
+                                <option value="None"></option>
+                                <option value="준비">준비</option>
+                                <option value="진행중">진행중</option>
+                                <option value="철회">철회</option>
+                                <option value="가격제시">가격제시</option>
+                                <option value="매각">매각</option>
+                            </select>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">긴급도</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="긴급도">
+                            <select class="range-input" data-col="긴급도">
+                                <option value="None"></option>
+                                <option value="A 매우급함">A 매우급함</option>
+                                <option value="B 급함">B 급함</option>
+                                <option value="C 적당히">C 적당히</option>
+                                <option value="D 안급함">D 안급함</option>
+                                <option value="Z 안팔아도됨">Z 안팔아도됨</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">입지</label>
+                            <select class="range-input" data-col="입지">
+                                <option value="None"></option>
+                                <option value="A 아주좋음">A 아주좋음</option>
+                                <option value="B 적당히좋음">B</option>
+                                <option value="C 별로임">C</option>
+                                <option value="D 아주별로임">D</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">등급</label>
+                            <select class="range-input" data-col="등급">
+                                <option value="None"></option>
+                                <option value="A 아주좋음">A 아주좋음</option>
+                                <option value="B 적당히좋음">B</option>
+                                <option value="C 별로임">C</option>
+                                <option value="D 아주별로임">D</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">건물용도</label>
+                            <select class="range-input" data-col="건물용도">
+                                <option value="None"></option>
+                                <option value="수익률">수익률</option>
+                                <option value="신축용">신축용</option>
+                                <option value="사옥용">사옥용</option>
+                                <option value="리모델링용">리모델링용</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">명도</label>
+                            <select class="range-input" data-col="명도">
+                                <option value="None"></option>
+                                <option value="확인중">확인중</option>
+                                <option value="완료">완료</option>
+                                <option value="가능">가능</option>
+                                <option value="불가">불가</option>
+                                <option value="일부">일부</option>
+                                <option value="조건부">조건부</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">용도변경</label>
+                            <select class="range-input" data-col="용도변경">
+                                <option value="None"></option>
+                                <option value="확인중">확인중</option>
+                                <option value="나대지(주차장)">나대지(주차장)</option>
+                                <option value="근생">근생</option>
+                                <option value="상가주택">상가주택</option>
+                                <option value="다가구주택">다가구주택</option>
+                                <option value="다세대주택">다세대주택</option>
+                                <option value="가능">가능</option>
+                                <option value="불가">불가</option>
+                                <option value="협의가">협의가</option>
+                                <option value="조건부">조건부</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">멸실</label>
+                            <select class="range-input" data-col="멸실">
+                                <option value="None"></option>
+                                <option value="확인중">확인중</option>
+                                <option value="불가">불가</option>
+                                <option value="협조가능">협조가능</option>
+                                <option value="잔금전멸실">잔금전멸실</option>
+                                <option value="나대지(주차장)">나대지(주차장)</option>
+                                <option value="협의가능">협의가능</option>
+                                <option value="조건부">조건부</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">사진</label>
+                            <select class="range-input" data-col="사진">
+                                <option value="None"></option>
+                                <option value="무">사진(무)</option>
+                                <option value="유">사진(유)</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">브리핑자료</label>
+                            <select class="range-input" data-col="브리핑자료">
+                                <option value="None"></option>
+                                <option value="무">자료(무)</option>
+                                <option value="유">자료(유)</option>
+                            </select>
                         </div>
                     </section>
 
@@ -557,35 +786,14 @@
                             </div>
                         </div>
                         <div class="filter-row">
-                            <label class="filter-label">대수선/리모델링</label>
+                            <label class="filter-label">대수선 및 리모델링</label>
                             <div class="range-wrapper">
                                 <input type="text" class="range-input" data-col="대수선 및 리모델링"
                                     oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
                                     data-col="대수선 및 리모델링" oninput="formatDate(this)">
                             </div>
                         </div>
-                        <div class="filter-row">
-                            <label class="filter-label">매각일</label>
-                            <div class="range-wrapper">
-                                <input type="text" class="range-input" data-col="매각일"
-                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
-                                    data-col="매각일" oninput="formatDate(this)">
-                            </div>
-                        </div>
-                        <div class="filter-row">
-                            <label class="filter-label">매각회수</label>
-                            <select id="salesCountSelect"
-                                class="w-full border rounded p-1.5 text-xs bg-white outline-none">
-                                <option value="all">전체</option>
-                                <option value="1">1회</option>
-                                <option value="2">2회</option>
-                                <option value="3">3회</option>
-                            </select>
-                        </div>
-                    </section>
 
-                    <section class="space-y-1 pb-10">
-                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
                         <div class="filter-row">
                             <label class="filter-label">엘리베이터</label>
                             <div class="range-wrapper">
@@ -614,6 +822,157 @@
                                 <input type="number" class="range-input" data-col="규모지하">
                             </div>
                         </div>
+                        <div class="filter-row">
+                            <label class="filter-label">건폐율</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="건폐율"><span>~</span>
+                                <input type="number" class="range-input" data-col="건폐율">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">용적률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="용적률"><span>~</span>
+                                <input type="number" class="range-input" data-col="용적률">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">법정건폐율</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="법정건폐율"><span>~</span>
+                                <input type="number" class="range-input" data-col="법정건폐율">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">법정용적률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="법정용적률"><span>~</span>
+                                <input type="number" class="range-input" data-col="법정용적률">
+                            </div>
+                        </div>
+
+                        <div class="filter-row">
+                            <label class="filter-label">건폐율 - 법정건폐율</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="건폐율법정건폐율"><span>~</span>
+                                <input type="number" class="range-input" data-col="건폐율법정건폐율">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">용적률 - 법정용적률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="용적률법정용적률"><span>~</span>
+                                <input type="number" class="range-input" data-col="용적률법정용적률">
+                            </div>
+                        </div>              
+                    </section>
+
+                    <section>
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div id="detailSelectGrid" class="space-y-1"></div>
+                        <div id="detailTagContainer" class="tag-box"><span class="text-[10px] text-gray-300"></span>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">토지면적</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="토지면적"><span>~</span>
+                                <input type="number" class="range-input" data-col="토지면적">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가5년전</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가5년전"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가5년전">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가10년전</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가10년전"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가10년전">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가상승률5년전</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가상승률5년전"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가상승률5년전">
+                            </div>
+                        </div>   
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가상승률10년전</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가상승률10년전"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가상승률10년전">
+                            </div>
+                        </div>  
+                        <div class="filter-row">
+                            <label class="filter-label">공시지가합계</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="공시지가합계"><span>~</span>
+                                <input type="number" class="range-input" data-col="공시지가합계">
+                            </div>
+                        </div>              
+                    </section>
+                    
+
+                    <section class="space-y-1 pb-10">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <div class="filter-row">
+                            <label class="filter-label">매각일</label>
+                            <div class="range-wrapper">
+                                <input type="text" class="range-input" data-col="매각일"
+                                    oninput="formatDate(this)"><span>~</span><input type="text" class="range-input"
+                                    data-col="매각일" oninput="formatDate(this)">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">매각회수</label>
+                            <select id="salesCountSelect"
+                                class="w-full border rounded p-1.5 text-xs bg-white outline-none">
+                                <option value="all">전체</option>
+                                <option value="1">1회</option>
+                                <option value="2">2회</option>
+                                <option value="3">3회</option>
+                            </select>
+                        </div>
+                        <label class="filter-label">매각손익률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="매각손익"><span>~</span>
+                                <input type="number" class="range-input" data-col="매각손익">
+                            </div>
+                    </section>
+                    <section class="space-y-1 pb-10">
+                        <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
+                        <label class="filter-label">네이버광고</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="네이버광고"><span>~</span>
+                                <input type="number" class="range-input" data-col="네이버광고">
+                            </div>
+                        <label class="filter-label">네이버광고과거</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="네이버광고과거"><span>~</span>
+                                <input type="number" class="range-input" data-col="네이버광고과거">
+                            </div>
+                        <label class="filter-label">네이버광고상승률</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="네이버광고상승률"><span>~</span>
+                                <input type="number" class="range-input" data-col="네이버광고상승률">
+                            </div>
+                        <label class="filter-label">빌탐정광고등록</label>
+                            <select class="range-input" data-col="빌탐정광고등록">
+                                <option value="None"></option>
+                                <option value="무">무</option>
+                                <option value="유">유</option>
+                            </select>
                     </section>
                 </div>
             </aside>
@@ -835,7 +1194,8 @@
                                     </div>
                                     <div><label class="block text-[11px] font-bold text-gray-400">수익률(%)</label>
                                         <input type="text" id="reg-yield" data-unit="rate"
-                                            class="w-full border rounded p-1.5 text-xs bg-gray-50 font-bold" readonly>
+                                            class="w-full border rounded p-1.5 text-xs bg-gray-50 font-bold" readonly
+                                            onblur="Val.sync(this); calculatePropertyStats();">
                                     </div>
                                     <div class="col-span-2 grid grid-cols-3 gap-2">
                                         <div><label class="text-[10px] text-gray-400">총보증금(만)</label>
@@ -1315,16 +1675,16 @@
             '공시지가 상승률(10년)': '공시지가상승률10년전',
             '공시지가 기준': '공시지가기준',
             '매매가(억)': '매매가', '총공시지가와 매매가 비율': '총공시지가와매매가비율',
-            '평단가(대지면적)':'대지면적당평단가', '평단가(연면적)':'평단가(연면적)',
+            '평단가(대지면적)': '대지면적평단가', '평단가(연면적)': '연면적평단가',
 
-            '매물번호':'매물번호','담당자':'담당자', '진행상태':'진행상태', '접수일':'접수일',
+            '매물번호': '매물번호', '담당자': '담당자', '진행상태': '진행상태', '접수일': '접수일',
             '긴급도': '긴급도', '등급': '등급', '입지': '입지',
             '매수의향서': '매수의향서', '성향': '성향', '관계': '관계', '사진': '사진', '브리핑': '브리핑',
             '빌탐정광고등록유무': '빌탐정광고등록유무', '건물용도': '건물용도',
             '명도': '명도', '용도변경': '용도변경', '멸실': '멸실', '영상번호/분/초': '영상번호분초',
 
             'AI추정가': 'AI추정가', 'AI추정가와 매매가 비율': 'AI추정가매매가비율', '총보증금': '총보증금', '총월세(부가세 별도)': '총월세부가세별도', '총관리비': '총관리비', '수익률': '수익률',
-            '공실제외수익률':'공실제외수익률', '자기자본수익률': '자기자본수익률', '소유자타입':'소유자타입', '소유자명':'소유자명','전화번호':'전화번호',
+            '공실제외수익률': '공실제외수익률', '자기자본수익률': '자기자본수익률', '소유자타입': '소유자타입', '소유자명': '소유자명', '전화번호': '전화번호',
             '네이버광고': '네이버광고', '네이버광고과거': '네이버광고과거', '네이버광고상승률': '네이버광고상승률',
             '매각일1': '매각일1', '매각일2': '매각일2', '매각일3': '매각일3', '매각손익': '매각손익',
             '매각액1': '매각액1', '매각액2': '매각액2', '매각액3': '매각액3', '소유자현재': '소유자현재', '소유자과거': '소유자과거'
@@ -1381,7 +1741,7 @@
 
             initRegionSelectors();
             initDetailSelectors();
-            await Promise.all([loadWishlist(), loadColumnSettings()]);
+            await Promise.all([loadColumnSettings()]);
             // setupGroupDropdown();
             setupPaginationEvents();
             setupEnterKeySearch();
@@ -1481,7 +1841,7 @@
 
                 // Select - w-full 제거, 글자 크기 축소, 패딩 축소
                 const select = document.createElement('select');
-                select.className = "border border-gray-300 rounded px-1 py-1 text-xs focus:outline-none focus:border-blue-500 bg-white cursor-pointer hover:bg-gray-50";
+                select.className = "range-input";
                 // 플레이스홀더처럼 보이게 처리
                 select.innerHTML = `<option value="" disabled selected>${key}</option>`;
 
@@ -1771,83 +2131,66 @@
 
         // 데이터를 받자마자 숫자로만 모든 파생 필드를 계산하는 함수
         function processCalculatedFields(row) {
-
-            // 1. AI추정가 정제 및 검증 함수 (임시 조치)
-            const getPureNumber = (val) => {
-                if (!has(val)) return null;
-                const str = String(val).trim();
-                if (/[^\d.]/.test(str)) return null;
-
-                const num = parseFloat(str);
-                return isNaN(num) ? null : num;
-            };
-            // 값이 실제로 존재하는지 확인하는 헬퍼 (null, undefined, 빈 문자열 체크)
+            // 값이 실제로 존재하는지 확인하는 헬퍼
             const has = (val) => val !== null && val !== undefined && val !== "";
 
-            // 기초 데이터 추출
+            // [수정] COLUMN_MAP의 밸류값(매핑키)을 사용하여 데이터 추출
             const current = row['공시지가'];
-            const area = row['대지면적']; // 혹은 해당되는 면적 컬럼명
+            const area = row['대지면적'];
             const old5 = row['공시지가5년전'];
             const old10 = row['공시지가10년전'];
-            const price = row['매매가억'];
+            const price = row['매매가']; // '매매가억'에서 '매매가'로 수정
             const bc = row['건폐율'];
             const bcLegal = row['법정건폐율'];
             const far = row['용적률'];
             const farLegal = row['법정용적률'];
             const naverAd = row['네이버광고'];
             const naverAdOld = row['네이버광고과거'];
-            const AIguessRaw = row['AI추정가']; // 원 단위 (Text 형식)
-            const AIguess = getPureNumber(AIguessRaw);
             const divestPrice = row['매각액1'];
             const divestPrice_old = row['매각액2'];
 
-            // 0. 공시지가 기준 (공시지가와 면적이 둘 다 있어야 계산)
+            // 0. 공시지가 기준
             if (has(current) && has(area)) {
-                row['공시지가기준'] = Number((current * area * 1.9).toFixed(2));
-            } else {
-                row['공시지가기준'] = null;
+                row['공시지가기준'] = Number((current * area * 1.9).toFixed(0));
             }
             const base = row['공시지가기준'];
 
-            // 1. 공시지가 상승률 (현재가와 과거가가 둘 다 있어야 하며, 과거가가 0이 아니어야 함)
-            row['공시지가상승률5년'] = (has(current) && has(old5) && old5 !== 0)
-                ? Number(((current - old5) / old5 * 100).toFixed(2)) : null;
-
-            row['공시지가상승률10년'] = (has(current) && has(old10) && old10 !== 0)
-                ? Number(((current - old10) / old10 * 100).toFixed(2)) : null;
+            // 1. 공시지가 상승률
+            row['공시지가상승률5년전'] = (has(current) && has(old5) && old5 != 0) ? Number(((current - old5) / old5 * 100).toFixed(2)) : null;
+            row['공시지가상승률10년전'] = (has(current) && has(old10) && old10 != 0) ? Number(((current - old10) / old10 * 100).toFixed(2)) : null;
 
             // 2. 총공시지가와 매매가 비율
-            row['총공시지가와매매가비율'] = (has(price) && has(base) && base > 0)
-                ? Number(((price / base) * 100).toFixed(2)) : null;
+            row['총공시지가와매매가비율'] = (has(price) && has(base) && base > 0) ? Number(((price / base) * 100).toFixed(2)) : null;
 
             // 3. 건폐율 및 용적률 차이
-            row['건폐율법정건폐율'] = (has(bc) && has(bcLegal))
-                ? Number((bc - bcLegal).toFixed(2)) : null;
-
-            row['용적률법정용적률'] = (has(far) && has(farLegal))
-                ? Number((far - farLegal).toFixed(2)) : null;
+            row['건폐율법정건폐율'] = (has(bc) && has(bcLegal)) ? Number((bc - bcLegal).toFixed(2)) : null;
+            row['용적률법정용적률'] = (has(far) && has(farLegal)) ? Number((far - farLegal).toFixed(2)) : null;
 
             // 4. 네이버광고 상승률
-            row['네이버광고상승률'] = (has(naverAd) && has(naverAdOld) && naverAdOld !== 0)
-                ? Number(((naverAd - naverAdOld) / naverAdOld * 100).toFixed(2)) : null;
+            row['네이버광고상승률'] = (has(naverAd) && has(naverAdOld) && naverAdOld != 0) ? Number(((naverAd - naverAdOld) / naverAdOld * 100).toFixed(2)) : null;
 
-            row['AI추정가와매매가비율'] = (has(AIguess) && has(price))
-                ? Number(((AIguess - price) / price * 100).toFixed(2)) : null;
-
-            row['매각손익'] = (has(divestPrice) && has(divestPrice_old))
-                ? Number(((divestPrice - divestPrice_old) / divestPrice_old * 100).toFixed(2)) : null;
+            // 5. 매각손익률
+            row['매각손익률'] = (has(divestPrice) && has(divestPrice_old) && divestPrice_old != 0) ? Number(((divestPrice - divestPrice_old) / divestPrice_old * 100).toFixed(2)) : null;
 
             return row;
         }
 
 
         // renderTable 함수 내부 수정
+        /**
+ * Handsontable 렌더링 및 데이터 관리 함수
+ * 서버 저장(PNU 기반)과 실시간 계산 로직이 통합되었습니다.
+ */
+        /**
+ * Handsontable 렌더링 및 실시간 저장/계산 로직 통합 함수
+ */
         function renderTable(data) {
             const container = document.getElementById('spreadsheet-container');
             if (hot) hot.destroy();
 
+            // 1. 초기 로드 시 파생 필드 계산
             const processedData = data.map(row => processCalculatedFields(row));
-            const displayHeaderOrder = savedColumnOrder.length > 0 ? savedColumnOrder : TARGET_COLUMNS;
+            const displayHeaderOrder = savedColumnOrder.length > 0 ? savedColumnOrder : Object.keys(COLUMN_MAP);
             const columnsConfig = displayHeaderOrder.map(headerName => getColumnConfig(headerName));
 
             hot = new Handsontable(container, {
@@ -1859,31 +2202,72 @@
                 width: '100%',
                 licenseKey: 'non-commercial-and-evaluation',
                 manualColumnMove: true,
-                manualColumnResize: false,
                 autoColumnSize: true,
-                filters: false,
-                dropdownMenu: false,
-                contextMenu: false,
 
-                // --- [추가된 로직: 매각손익 계산] ---
-                afterChange: function (changes, source) {
-                    if (source === 'loadData' || source === 'auto_calc') return;
+                afterColumnMove: (movedColumns, finalIndex, dropIndex, movePossible, orderChanged) => {
+                    if (orderChanged) {
+                        console.log("컬럼 순서 변경 감지 -> 저장 시작");
+                        saveColumnOrder(); // <--- 바로 여기서 실행됩니다!
+                    }
+                },
+
+                afterChange: async function (changes, source) {
+                    if (source === 'loadData' || source === 'auto_calc' || !changes) return;
+
+                    const updatePayload = [];
 
                     changes.forEach(([rowIdx, prop, oldValue, newValue]) => {
-                        // 수정된 행의 전체 데이터를 가져와서 재계산
-                        const rowData = this.getSourceDataAtRow(rowIdx);
-                        const updatedRow = processCalculatedFields(rowData);
+                        if (oldValue === newValue) return;
 
-                        // 변경된 파생 필드들만 다시 세팅 (auto_calc 태그로 무한루프 방지)
-                        if (prop === '매매가억' || prop === '공시지가기준') {
-                            this.setDataAtRowProp(rowIdx, '총공시지가와매매가비율', updatedRow['총공시지가와매매가비율'], 'auto_calc');
-                            this.setDataAtRowProp(rowIdx, 'AI추정가와매매가비율', updatedRow['AI추정가와매매가비율'], 'auto_calc');
+                        // [수정] 정렬된 상태에서도 정확한 원본 데이터를 가져오기 위해 Physical Row 인덱스 사용
+                        const physicalRow = this.toPhysicalRow(rowIdx);
+                        const rowData = this.getSourceDataAtRow(physicalRow);
+
+                        // [수정] API에서 넘어온 별칭 pnu_key를 최우선으로 사용하여 null 방지
+                        const pnu = rowData['pnu_key'] || rowData['고유번호'];
+
+                        if (pnu) {
+                            // 서버로 보낼 때는 항상 "고유번호"라는 키로 통일하여 전송
+                            updatePayload.push({ "고유번호": pnu, [prop]: newValue });
+
+                            // --- 실시간 재계산 및 화면 반영 ---
+                            const triggerCols = ['매매가', '공시지가', '대지면적', '공시지가5년전', '공시지가10년전', '건폐율', '법정건폐율', '용적률', '법정용적률', '네이버광고', '네이버광고과거', '매각액1', '매각액2', 'AI추정가'];
+
+                            if (triggerCols.includes(prop)) {
+                                const updatedRow = processCalculatedFields(rowData);
+                                // [수정] processCalculatedFields에서 사용하는 키값과 100% 일치시킴
+                                const calcMap = {
+                                    '공시지가기준': '공시지가기준',
+                                    '공시지가상승률5년전': '공시지가상승률5년전',
+                                    '공시지가상승률10년전': '공시지가상승률10년전',
+                                    '총공시지가와매매가비율': '총공시지가와매매가비율',
+                                    '건폐율법정건폐율': '건폐율법정건폐율',
+                                    '용적률법정용적률': '용적률법정용적률',
+                                    '네이버광고상승률': '네이버광고상승률',
+                                    'AI추정가매매가비율': 'AI추정가매매가비율',
+                                    '매각손익률': '매각손익률'
+                                };
+                                Object.entries(calcMap).forEach(([targetProp, sourceProp]) => {
+                                    this.setDataAtRowProp(rowIdx, targetProp, updatedRow[sourceProp], 'auto_calc');
+                                });
+                            }
                         }
                     });
-                },
-                // -----------------------------------
 
-                afterColumnMove: (m, f, d, p, changed) => { if (changed) saveColumnOrder(); }
+                    if (updatePayload.length > 0) {
+                        console.log("서버 업데이트 전송:", updatePayload);
+                        try {
+                            const response = await fetch('/api/update_data', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(updatePayload)
+                            });
+                            if (!response.ok) throw new Error("저장 실패");
+                        } catch (e) {
+                            console.error("Update Error:", e);
+                        }
+                    }
+                }
             });
         }
         function getColumnConfig(displayHeader) {
@@ -2109,63 +2493,73 @@
                 if (currentPage < maxPage) fetchData(++currentPage);
             });
         }
-        async function loadWishlist() {
+
+
+        // window.toggleMark = async (address) => {
+        //     const isMarked = !!wishlistMap[address];
+        //     const color = els.colorPicker.value;
+        //     const group = els.groupNameInput.value;
+        //     try {
+        //         if (isMarked) {
+        //             await fetch('/api/wishlist', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) });
+        //             delete wishlistMap[address];
+        //         } else {
+        //             await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, color, group_name: group }) });
+        //             wishlistMap[address] = { color, group_name: group };
+        //             existingGroups.add(group);
+        //         }
+        //         hot.render();
+        //     } catch { alert("저장 실패"); }
+        // };
+
+        /**
+ * 현재 테이블에 보이는 컬럼 헤더 순서를 서버에 저장합니다.
+ * Handsontable의 afterColumnMove 훅에 의해 자동 실행됩니다.
+ */
+        async function saveColumnOrder() {
+            if (!hot) return;
+
+            const count = hot.countCols();
+            const newOrder = [];
+
+            // 시각적 순서(Visual Index)대로 헤더 텍스트 수집
+            for (let i = 0; i < count; i++) {
+                const headerText = hot.getColHeader(i);
+                if (headerText) newOrder.push(headerText);
+            }
+
             try {
-                const res = await fetch('/api/wishlist');
-                wishlistMap = await res.json();
-                existingGroups.clear();
-                Object.values(wishlistMap).forEach(item => { if (item.group_name) existingGroups.add(item.group_name); });
-            } catch { }
+                const res = await fetch('/api/settings/columns', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ columns: newOrder })
+                });
+                const result = await res.json();
+                if (result.status === 'success') {
+                    console.log("컬럼 순서가 유저 계정에 저장되었습니다.");
+                    savedColumnOrder = newOrder; // 로컬 변수 업데이트
+                }
+            } catch (e) {
+                console.error("컬럼 순서 저장 실패:", e);
+            }
         }
 
-        // 컬럼 설정 불러오기: 저장된 값은 '노출값(Display Name)' 리스트여야 함
+        /**
+         * 서버에서 현재 유저의 맞춤형 컬럼 순서를 불러옵니다.
+         * 페이지 로드 시 window.onload 단계에서 호출됩니다.
+         */
         async function loadColumnSettings() {
             try {
                 const res = await fetch('/api/settings/columns');
                 const data = await res.json();
-                if (data && data.length) savedColumnOrder = data;
-            } catch { }
-        }
-
-        window.toggleMark = async (address) => {
-            const isMarked = !!wishlistMap[address];
-            const color = els.colorPicker.value;
-            const group = els.groupNameInput.value;
-            try {
-                if (isMarked) {
-                    await fetch('/api/wishlist', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address }) });
-                    delete wishlistMap[address];
-                } else {
-                    await fetch('/api/wishlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address, color, group_name: group }) });
-                    wishlistMap[address] = { color, group_name: group };
-                    existingGroups.add(group);
+                if (Array.isArray(data) && data.length > 0) {
+                    savedColumnOrder = data; // 전역 변수에 할당
+                    console.log("유저 맞춤형 설정을 로드했습니다.");
                 }
-                hot.render();
-            } catch { alert("저장 실패"); }
-        };
-
-        // 컬럼 순서 저장: 사용자가 보고 있는 '노출값' 순서를 저장
-        async function saveColumnOrder() {
-            const count = hot.countCols();
-            const newOrder = [];
-            // Handsontable의 colToProp는 'data' 키(DB컬럼명)를 반환할 수 있으므로, 
-            // 화면에 보이는 헤더명(노출값)을 가져오도록 로직 조정 필요.
-            // 하지만 Handsontable에서 colHeaders 배열 자체를 재정렬해서 관리하는게 아니라면,
-            // 여기서는 colHeaders[visualIndex]를 가져오는게 안전함.
-
-            const settings = hot.getSettings();
-            const currentHeaders = settings.colHeaders; // 현재 설정된 헤더 배열
-
-            for (let i = 0; i < count; i++) {
-                const visualIndex = hot.toVisualColumn(i); // 물리 인덱스 -> 현재 보이는 인덱스 X
-                // afterColumnMove에서는 변경된 인덱스 정보를 이용해야 함.
-                // 가장 확실한 방법: hot.colHeaders 가 참조가 아니라 값이면 어렵지만,
-                // Handsontable 인스턴스에서 현재 보이는 컬럼의 헤더 텍스트를 가져옴
-                const headerText = hot.getColHeader(i); // i번째 보이는 컬럼의 헤더
-                newOrder.push(headerText);
+            } catch (e) {
+                console.error("설정 로드 실패:", e);
+                savedColumnOrder = [];
             }
-
-            try { await fetch('/api/settings/columns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ columns: newOrder }) }); } catch { }
         }
 
         document.getElementById('btnSaveData').addEventListener('click', async () => {

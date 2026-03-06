@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 446472e9dc6f
+Revision ID: 006691eeef8c
 Revises: 
-Create Date: 2026-03-01 15:27:35.251737
+Create Date: 2026-03-03 15:58:16.675617
 
 """
 from alembic import op
@@ -11,7 +11,7 @@ import geoalchemy2
 
 
 # revision identifiers, used by Alembic.
-revision = '446472e9dc6f'
+revision = '006691eeef8c'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -48,6 +48,8 @@ def upgrade():
     sa.Column('수익률', sa.Float(), nullable=True),
     sa.Column('공실제외수익률', sa.Float(), nullable=True),
     sa.Column('자기자본수익률', sa.Float(), nullable=True),
+    sa.Column('자기자본', sa.Numeric(), nullable=True),
+    sa.Column('이자율', sa.Float(), nullable=True),
     sa.Column('긴급도', sa.Text(), nullable=True),
     sa.Column('등급', sa.Text(), nullable=True),
     sa.Column('입지', sa.Text(), nullable=True),
@@ -65,7 +67,6 @@ def upgrade():
     sa.Column('접수일', sa.Date(), nullable=True),
     sa.Column('영상번호분초', sa.Text(), nullable=True),
     sa.Column('매수의향서', sa.Text(), nullable=True),
-    sa.Column('memo', sa.Text(), nullable=True),
     sa.Column('빌탐정광고등록유무', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('매물번호'),
     sa.UniqueConstraint('고유번호')
@@ -84,6 +85,13 @@ def upgrade():
     sa.Column('대지면적', sa.Float(), nullable=True),
     sa.Column('연면적', sa.Float(), nullable=True),
     sa.Column('건축면적', sa.Float(), nullable=True),
+    sa.Column('용적률산정연면적', sa.Float(), nullable=True),
+    sa.Column('규모지상', sa.Integer(), nullable=True),
+    sa.Column('규모지하', sa.Integer(), nullable=True),
+    sa.Column('엘리베이터', sa.Integer(), nullable=True),
+    sa.Column('주차장', sa.Integer(), nullable=True),
+    sa.Column('사용승인일', sa.Text(), nullable=True),
+    sa.Column('대수선및리모델링', sa.Text(), nullable=True),
     sa.Column('용도지역', sa.Text(), nullable=True),
     sa.Column('주용도', sa.Text(), nullable=True),
     sa.Column('기타용도', sa.Text(), nullable=True),
@@ -91,13 +99,6 @@ def upgrade():
     sa.Column('법정건폐율', sa.Float(), nullable=True),
     sa.Column('용적률', sa.Float(), nullable=True),
     sa.Column('법정용적률', sa.Float(), nullable=True),
-    sa.Column('용적률산정연면적', sa.Float(), nullable=True),
-    sa.Column('규모지상', sa.Integer(), nullable=True),
-    sa.Column('규모지하', sa.Integer(), nullable=True),
-    sa.Column('엘리베이터', sa.Integer(), nullable=True),
-    sa.Column('주차장', sa.Integer(), nullable=True),
-    sa.Column('사용승인일', sa.Date(), nullable=True),
-    sa.Column('대수선및리모델링', sa.Date(), nullable=True),
     sa.Column('공시지가', sa.Numeric(), nullable=True),
     sa.Column('공시지가5년전', sa.Numeric(), nullable=True),
     sa.Column('공시지가10년전', sa.Numeric(), nullable=True),
@@ -108,17 +109,18 @@ def upgrade():
     sa.Column('공시지가합계', sa.Numeric(), nullable=True),
     sa.Column('공시지가기준', sa.Numeric(), nullable=True),
     sa.Column('총공시지가와매매가비율', sa.Float(), nullable=True),
-    sa.Column('네이버광고상승률', sa.Float(), nullable=True),
-    sa.Column('매각손익률', sa.Float(), nullable=True),
     sa.Column('AI추정가', sa.Text(), nullable=True),
+    sa.Column('AI추정가매매가비율', sa.Float(), nullable=True),
     sa.Column('네이버광고', sa.Numeric(), nullable=True),
     sa.Column('네이버광고과거', sa.Numeric(), nullable=True),
+    sa.Column('네이버광고상승률', sa.Float(), nullable=True),
+    sa.Column('매각일1', sa.Text(), nullable=True),
+    sa.Column('매각일2', sa.Text(), nullable=True),
+    sa.Column('매각일3', sa.Text(), nullable=True),
     sa.Column('매각액1', sa.Numeric(), nullable=True),
-    sa.Column('매각일1', sa.Integer(), nullable=True),
     sa.Column('매각액2', sa.Numeric(), nullable=True),
-    sa.Column('매각일2', sa.Integer(), nullable=True),
     sa.Column('매각액3', sa.Numeric(), nullable=True),
-    sa.Column('매각일3', sa.Integer(), nullable=True),
+    sa.Column('매각손익률', sa.Float(), nullable=True),
     sa.Column('소유자현재', sa.Text(), nullable=True),
     sa.Column('소유자과거', sa.Text(), nullable=True),
     sa.Column('x', sa.Float(precision=53), nullable=True),
@@ -130,8 +132,6 @@ def upgrade():
     with op.batch_alter_table('seoul_land_info', schema=None) as batch_op:
         batch_op.create_index('idx_seoul_land_info_geom', ['geom'], unique=False, postgresql_using='gist')
         batch_op.create_index('idx_seoul_land_info_pnu', ['고유번호'], unique=False)
-        batch_op.create_index('ix_seoul_land_info_x', ['x'], unique=False)
-        batch_op.create_index('ix_seoul_land_info_y', ['y'], unique=False)
 
     op.create_table('teams',
     sa.Column('master_id', sa.Text(), nullable=False),
@@ -157,17 +157,26 @@ def upgrade():
     sa.ForeignKeyConstraint(['writer_id'], ['users.user_id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('user_settings',
+    sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.Text(), nullable=False),
+    sa.Column('setting_key', sa.Text(), nullable=False),
+    sa.Column('setting_value', sa.Text(), nullable=True),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('user_id', 'setting_key', name='_user_setting_uc')
+    )
     # ### end Alembic commands ###
 
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_table('user_settings')
     op.drop_table('prop_memos')
     op.drop_table('users')
     op.drop_table('teams')
     with op.batch_alter_table('seoul_land_info', schema=None) as batch_op:
-        batch_op.drop_index('ix_seoul_land_info_y')
-        batch_op.drop_index('ix_seoul_land_info_x')
         batch_op.drop_index('idx_seoul_land_info_pnu')
         batch_op.drop_index('idx_seoul_land_info_geom', postgresql_using='gist')
 
