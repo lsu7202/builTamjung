@@ -223,6 +223,15 @@
             font-size: 11px;
         }
 
+        .common-input {
+            width: 100%;
+            height: 30px;
+            border: 1px solid #9ca3af !important;
+            border-radius: 4px;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+
         .range-wrapper {
             display: flex;
             align-items: center;
@@ -394,6 +403,11 @@
         <div class="flex items-center gap-2">
             <i class="fa-solid fa-building text-blue-600"></i>
             <span class="font-black text-base tracking-tight">빌<span class="text-blue-600">탐정</span></span>
+
+            <div class="flex items-center gap-2">
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                <span id="userInfoText" class="text-xs text-gray-600"></span>
+            </div>
         </div>
 
         <div class="flex gap-1.5">
@@ -485,7 +499,7 @@
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
                         <div class="filter-row">
                             <label class="filter-label">담당자</label>
-                            <select class="range-input" data-col="담당자">
+                            <select class="common-input" data-col="담당자">
                                 <option value="None"></option>
                                 <option value="나">나</option>
                                 <option value="팀">팀</option>
@@ -493,7 +507,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">소유자종류</label>
-                            <select class="range-input" data-col="소유자종류">
+                            <select class="common-input" data-col="소유자종류">
                                 <option value="None"></option>
                                 <option value="개인">개인</option>
                                 <option value="법인">법인</option>
@@ -501,15 +515,15 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">소유자명</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="소유자명">
+                            <input type="text" class="common-input border rounded p-1 text-xs w-full" data-col="소유자명">
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">전화번호</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="전화번호">
+                            <input type="text" class="common-input border rounded p-1 text-xs w-full" data-col="전화번호">
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">관계</label>
-                            <select class="range-input" data-col="관계">
+                            <select class="common-input" data-col="관계">
                                 <option value="None"></option>
                                 <option value="건물주/법인대표">건물주/법인대표</option>
                                 <option value="관리자">관리자</option>
@@ -520,7 +534,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">성향</label>
-                            <select class="range-input" data-col="성향">
+                            <select class="common-input" data-col="성향">
                                 <option value="None"></option>
                                 <option value="협조적">협조적</option>
                                 <option value="비협조적">비협조적</option>
@@ -538,7 +552,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">매수의향서</label>
-                            <select class="range-input" data-col="매수의향서">
+                            <select class="common-input" data-col="매수의향서">
                                 <option value="None"></option>
                                 <option value="원함">원함</option>
                                 <option value="원치않음">원치않음</option>
@@ -546,11 +560,11 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">영상번호분초</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="영상번호분초">
+                            <input type="text" class="common-input border rounded p-1 text-xs w-full" data-col="영상번호분초">
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">소유자현황</label>
-                            <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="소유자현황">
+                            <input type="text" class="common-input border rounded p-1 text-xs w-full" data-col="소유자현황">
                         </div>
                     </section>
 
@@ -559,7 +573,8 @@
                         <div class="filter-row">
                             <label class="filter-label">매물번호</label>
                             <div class="range-wrapper">
-                                <input type="text" class="range-input border rounded p-1 text-xs w-full" data-col="매물번호">
+                                <input type="text" class="common-input border rounded p-1 text-xs w-full"
+                                    data-col="매물번호">
                             </div>
                         </div>
                         <div class="filter-row">
@@ -634,7 +649,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">진행상태</label>
-                            <select class="range-input" data-col="진행상태">
+                            <select class="common-input" data-col="진행상태">
                                 <option value="None"></option>
                                 <option value="준비">준비</option>
                                 <option value="진행중">진행중</option>
@@ -645,7 +660,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">긴급도</label>
-                            <select class="range-input" data-col="긴급도">
+                            <select class="common-input" data-col="긴급도">
                                 <option value="None"></option>
                                 <option value="A 매우급함">A 매우급함</option>
                                 <option value="B 급함">B 급함</option>
@@ -656,7 +671,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">입지</label>
-                            <select class="range-input" data-col="입지">
+                            <select class="common-input" data-col="입지">
                                 <option value="None"></option>
                                 <option value="A 아주좋음">A 아주좋음</option>
                                 <option value="B 적당히좋음">B</option>
@@ -666,7 +681,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">등급</label>
-                            <select class="range-input" data-col="등급">
+                            <select class="common-input" data-col="등급">
                                 <option value="None"></option>
                                 <option value="A 아주좋음">A 아주좋음</option>
                                 <option value="B 적당히좋음">B</option>
@@ -676,7 +691,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">건물용도</label>
-                            <select class="range-input" data-col="건물용도">
+                            <select class="common-input" data-col="건물용도">
                                 <option value="None"></option>
                                 <option value="수익률">수익률</option>
                                 <option value="신축용">신축용</option>
@@ -686,7 +701,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">명도</label>
-                            <select class="range-input" data-col="명도">
+                            <select class="common-input" data-col="명도">
                                 <option value="None"></option>
                                 <option value="확인중">확인중</option>
                                 <option value="완료">완료</option>
@@ -698,7 +713,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">용도변경</label>
-                            <select class="range-input" data-col="용도변경">
+                            <select class="common-input" data-col="용도변경">
                                 <option value="None"></option>
                                 <option value="확인중">확인중</option>
                                 <option value="나대지(주차장)">나대지(주차장)</option>
@@ -714,7 +729,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">멸실</label>
-                            <select class="range-input" data-col="멸실">
+                            <select class="common-input" data-col="멸실">
                                 <option value="None"></option>
                                 <option value="확인중">확인중</option>
                                 <option value="불가">불가</option>
@@ -727,7 +742,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">사진</label>
-                            <select class="range-input" data-col="사진">
+                            <select class="common-input" data-col="사진">
                                 <option value="None"></option>
                                 <option value="무">사진(무)</option>
                                 <option value="유">사진(유)</option>
@@ -735,7 +750,7 @@
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">브리핑자료</label>
-                            <select class="range-input" data-col="브리핑자료">
+                            <select class="common-input" data-col="브리핑자료">
                                 <option value="None"></option>
                                 <option value="무">자료(무)</option>
                                 <option value="유">자료(유)</option>
@@ -864,7 +879,7 @@
                                 <input type="number" class="range-input" data-col="용적률법정용적률"><span>~</span>
                                 <input type="number" class="range-input" data-col="용적률법정용적률">
                             </div>
-                        </div>              
+                        </div>
                     </section>
 
                     <section>
@@ -906,23 +921,23 @@
                                 <input type="number" class="range-input" data-col="공시지가상승률5년전"><span>~</span>
                                 <input type="number" class="range-input" data-col="공시지가상승률5년전">
                             </div>
-                        </div>   
+                        </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가상승률10년전</label>
                             <div class="range-wrapper">
                                 <input type="number" class="range-input" data-col="공시지가상승률10년전"><span>~</span>
                                 <input type="number" class="range-input" data-col="공시지가상승률10년전">
                             </div>
-                        </div>  
+                        </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가합계</label>
                             <div class="range-wrapper">
                                 <input type="number" class="range-input" data-col="공시지가합계"><span>~</span>
                                 <input type="number" class="range-input" data-col="공시지가합계">
                             </div>
-                        </div>              
+                        </div>
                     </section>
-                    
+
 
                     <section class="space-y-1 pb-10">
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
@@ -945,34 +960,34 @@
                             </select>
                         </div>
                         <label class="filter-label">매각손익률</label>
-                            <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="매각손익"><span>~</span>
-                                <input type="number" class="range-input" data-col="매각손익">
-                            </div>
+                        <div class="range-wrapper">
+                            <input type="number" class="range-input" data-col="매각손익"><span>~</span>
+                            <input type="number" class="range-input" data-col="매각손익">
+                        </div>
                     </section>
                     <section class="space-y-1 pb-10">
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
                         <label class="filter-label">네이버광고</label>
-                            <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="네이버광고"><span>~</span>
-                                <input type="number" class="range-input" data-col="네이버광고">
-                            </div>
+                        <div class="range-wrapper">
+                            <input type="number" class="range-input" data-col="네이버광고"><span>~</span>
+                            <input type="number" class="range-input" data-col="네이버광고">
+                        </div>
                         <label class="filter-label">네이버광고과거</label>
-                            <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="네이버광고과거"><span>~</span>
-                                <input type="number" class="range-input" data-col="네이버광고과거">
-                            </div>
+                        <div class="range-wrapper">
+                            <input type="number" class="range-input" data-col="네이버광고과거"><span>~</span>
+                            <input type="number" class="range-input" data-col="네이버광고과거">
+                        </div>
                         <label class="filter-label">네이버광고상승률</label>
-                            <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="네이버광고상승률"><span>~</span>
-                                <input type="number" class="range-input" data-col="네이버광고상승률">
-                            </div>
+                        <div class="range-wrapper">
+                            <input type="number" class="range-input" data-col="네이버광고상승률"><span>~</span>
+                            <input type="number" class="range-input" data-col="네이버광고상승률">
+                        </div>
                         <label class="filter-label">빌탐정광고등록</label>
-                            <select class="range-input" data-col="빌탐정광고등록">
-                                <option value="None"></option>
-                                <option value="무">무</option>
-                                <option value="유">유</option>
-                            </select>
+                        <select class="common-input" data-col="빌탐정광고등록">
+                            <option value="None"></option>
+                            <option value="무">무</option>
+                            <option value="유">유</option>
+                        </select>
                     </section>
                 </div>
             </aside>
@@ -1686,7 +1701,7 @@
             'AI추정가': 'AI추정가', 'AI추정가와 매매가 비율': 'AI추정가매매가비율', '총보증금': '총보증금', '총월세(부가세 별도)': '총월세부가세별도', '총관리비': '총관리비', '수익률': '수익률',
             '공실제외수익률': '공실제외수익률', '자기자본수익률': '자기자본수익률', '소유자타입': '소유자타입', '소유자명': '소유자명', '전화번호': '전화번호',
             '네이버광고': '네이버광고', '네이버광고과거': '네이버광고과거', '네이버광고상승률': '네이버광고상승률',
-            '매각일1': '매각일1', '매각일2': '매각일2', '매각일3': '매각일3', '매각손익': '매각손익',
+            '매각일1': '매각일1', '매각일2': '매각일2', '매각일3': '매각일3', '매각손익': '매각손익률',
             '매각액1': '매각액1', '매각액2': '매각액2', '매각액3': '매각액3', '소유자현재': '소유자현재', '소유자과거': '소유자과거'
         };
 
@@ -1745,6 +1760,7 @@
             // setupGroupDropdown();
             setupPaginationEvents();
             setupEnterKeySearch();
+            loadSessionInfo();
 
             document.getElementById('btnToggleUnit').addEventListener('click', function () {
                 isPyungMode = !isPyungMode;
@@ -1925,7 +1941,7 @@
 
             // 4. [수정됨] 입력 필드 초기화 
             // .toggle-input (새로 추가된 엘리베이터, 날짜 등) 클래스 추가
-            document.querySelectorAll('.range-input, .toggle-input, #BUNJISearchInput, #mainSearchInput').forEach(inp => inp.value = '');
+            document.querySelectorAll('.range-input, .toggle-input, .common-input, #BUNJISearchInput, #mainSearchInput').forEach(inp => inp.value = '');
 
             // 5. [추가됨] 화살표 버튼 상태 초기화 (모두 UP/빨강 상태로 복귀)
             document.querySelectorAll('.arrow-btn').forEach(btn => {
@@ -2054,6 +2070,20 @@
                         ranges[col]['min'] = val;
                     } else {
                         ranges[col]['max'] = val;
+                    }
+                }
+            });
+
+            // [중요] 담당자, 진행상태 등 드롭다운/입력값 수집 (추가)
+            document.querySelectorAll('.common-input').forEach(inp => {
+                const col = inp.dataset.col;
+                const val = inp.value.trim();
+                // 'None'이나 빈값은 전송하지 않음
+                if (val && val !== 'None' && val !== '') {
+                    const dbKey = COLUMN_MAP[col] || col;
+                    if (!multiFilters[dbKey]) multiFilters[dbKey] = [];
+                    if (!multiFilters[dbKey].includes(val)) {
+                        multiFilters[dbKey].push(val);
                     }
                 }
             });

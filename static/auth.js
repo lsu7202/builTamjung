@@ -1,10 +1,12 @@
 async function handleSignup() {
+    
     const data = {
         user_id: document.getElementById('join_id').value,
         user_pw: document.getElementById('join_pw').value,
         user_name: document.getElementById('join_name').value,
         role: document.getElementById('join_role').value,
-        team_id: document.getElementById('join_team_id').value // 슬레이브용
+        master_id: document.getElementById('join_team_id').value,// 슬레이브용
+        key: document.getElementById('key').value
     };
 
     const response = await fetch('/signup', {

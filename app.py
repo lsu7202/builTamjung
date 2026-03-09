@@ -97,30 +97,81 @@ with app.app_context():
     try:
         setup_db_triggers(engine)
         logging.info("DB 트리거가 성공적으로 설정되었습니다.")
+        PROP_MAIN_COLUMNS = {c.name for c in inspect(PropMain).columns}
+    
+        # 2. SeoulLandInfo 모델에서도 DB 컬럼명 리스트를 추출합니다.
+        # (두 테이블에 중복된 컬럼이 있을 경우의 우선순위 판단을 위해 사용)
+        LAND_INFO_COLUMNS = {c.name for c in inspect(SeoulLandInfo).columns}
+        logging.info(f"Metadata loaded: {len(PROP_MAIN_COLUMNS)} columns in PropMain")
     except Exception as e:
         logging.error(f"DB 트리거 설정 중 오류 발생: {e}")
 
 # --- 필터 매핑 상수 ---
+# app.py 상단 FILTER_MAPPING 업데이트
 FILTER_MAPPING = {
+    # [매물 정보 - prop_main 테이블 소속]
+    '담당자': '담당자',
+    '소유자종류': '소유자타입',
+    '소유자명': '소유자명',
+    '전화번호': '전화번호',
+    '관계': '관계',
+    '성향': '성향',
+    '접수일': '접수일',
+    '매수의향서': '매수의향서',
+    '영상번호분초': '영상번호분초',
+    '매물번호': '매물번호',
     '매매가': '매매가',
-    '공시지가': '공시지가',
-    '입지': '입지',
+    '수익률': '수익률',
+    '공실제외수익률': '공실제외수익률',
+    '자기자본수익률': '자기자본수익률',
+    '총보증금': '총보증금',
+    '총임대료': '총월세부가세별도',
+    '총관리비': '총관리비',
+    '대지면적평단가': '대지면적평단가',
+    '연면적평단가': '연면적평단가',
+    '진행상태': '진행상태',
     '긴급도': '긴급도',
+    '입지': '입지',
+    '등급': '등급',
+    '건물용도': '건물용도',
+    '명도': '명도',
+    '용도변경': '용도변경',
+    '멸실': '멸실',
+    '사진': '사진',
+    '브리핑자료': '브리핑',
+    '빌탐정광고등록': '빌탐정광고등록유무',
+
+    # [토지/건물 정보 - seoul_land_info 테이블 소속]
+    '소유자현황': '소유자현재',
+    '총공시지가와매매가비율': '총공시지가와매매가비율',
     '대지면적': '대지면적',
     '연면적': '연면적',
     '건축면적': '건축면적',
     '용적률산정용연면적': '용적률산정연면적',
+    '사용승인일': '사용승인일',
+    '대수선 및 리모델링': '대수선및리모델링',
     '엘리베이터': '엘리베이터',
     '주차장': '주차장',
     '규모지상': '규모지상',
     '규모지하': '규모지하',
-    '대수선 및 리모델링': '대수선및리모델링', 
-    '사용승인일': '사용승인일',
-    '지목명': '지목',
-    '도로접면': '도로',
-    '주용도코드명': '주용도',
-    '형상': '형상',
-    '용도지역': '용도지역'
+    '건폐율': '건폐율',
+    '용적률': '용적률',
+    '법정건폐율': '법정건폐율',
+    '법정용적률': '법정용적률',
+    '건폐율법정건폐율': '건폐율법정건폐율',
+    '용적률법정용적률': '용적률법정용적률',
+    '토지면적': '토지면적',
+    '공시지가': '공시지가',
+    '공시지가5년전': '공시지가5년전',
+    '공시지가10년전': '공시지가10년전',
+    '공시지가상승률5년전': '공시지가상승률5년전',
+    '공시지가상승률10년전': '공시지가상승률10년전',
+    '공시지가합계': '공시지가합계',
+    '매각일': '매각일1',
+    '매각손익': '매각손익률',
+    '네이버광고': '네이버광고',
+    '네이버광고과거': '네이버광고과거',
+    '네이버광고상승률': '네이버광고상승률'
 }
 
 
@@ -137,101 +188,107 @@ def normalize_date(val):
 # --- 헬퍼 함수: 필터 조건을 SQL WHERE절로 변환 ---
 def build_where_clause(filters, params):
     where_clauses = []
-    
-    # 1. 고유번호 (PNU) 처리 - 조인 시 모호성 방지를 위해 L. 붙임
-    pnu_input = filters.get('고유번호', [])
-    if isinstance(pnu_input, (str, dict)):
-        pnu_input = [pnu_input]
-    
-    pnu_conds = []
-    if pnu_input:
-        for idx, p in enumerate(pnu_input):
-            val = p.get('value', '') if isinstance(p, dict) else p
-            if val and str(val).strip():
-                p_key = f"pnu_idx_{idx}"
-                pnu_conds.append(f'L."고유번호" LIKE :{p_key}') # 테이블 별칭 L 적용
-                params[p_key] = f"{str(val).strip()}%"
-                
-    if pnu_conds:
-        where_clauses.append(f"({' OR '.join(pnu_conds)})")
 
-    # 2. 상세 조건 (multi_filters)
+    def get_prefix(db_col):
+        if db_col == "고유번호": return "L"
+        return "P" if db_col in PROP_MAIN_COLUMNS else "L"
+
+    # 1. 고유번호(PNU) 처리 (기존과 동일)
+    pnu_input = filters.get('고유번호', [])
+    if isinstance(pnu_input, (str, dict)): pnu_input = [pnu_input]
+    pnu_conds = []
+    for idx, p in enumerate(pnu_input):
+        val = p.get('value', '') if isinstance(p, dict) else p
+        if val and str(val).strip():
+            p_key = f"pnu_idx_{idx}"
+            pnu_conds.append(f'L."고유번호" LIKE :{p_key}')
+            params[p_key] = f"{str(val).strip()}%"
+    if pnu_conds: where_clauses.append(f"({' OR '.join(pnu_conds)})")
+
+    # 2. 다중 선택 필터 및 담당자 특수 로직
     multi_filters = filters.get('multi_filters', {})
     for key, values in multi_filters.items():
         if values:
             db_col = FILTER_MAPPING.get(key, key)
-            clean_values = [v.strip() for v in values if v.strip()]
+            prefix = get_prefix(db_col)
+            clean_values = [v.strip() for v in values if v.strip() and v != 'None']
+            
             if clean_values:
-                or_conds = [f'L."{db_col}" LIKE :multi_{key}_{idx}' for idx, val in enumerate(clean_values)]
-                where_clauses.append(f"({' OR '.join(or_conds)})")
+                or_conds = []
                 for idx, val in enumerate(clean_values):
-                    params[f'multi_{key}_{idx}'] = f"%{val}%"
+                    # [특수 로직 A] 담당자가 "나"일 때: 세션의 사용자 이름으로 대체
+                    if db_col == '담당자' and val == '나':
+                        current_user = session.get('user_name')
+                        if current_user:
+                            p_key = f'multi_{key}_{idx}'
+                            or_conds.append(f'{prefix}."{db_col}" = :{p_key}')
+                            params[p_key] = current_user
+                    
+                    # [특수 로직 B] 담당자가 "팀"일 때: 담당자가 비어있지 않은 모든 매물
+                    elif db_col == '담당자' and val == '팀':
+                        or_conds.append(f'({prefix}."{db_col}" IS NOT NULL AND {prefix}."{db_col}" != \'\')')
+                    
+                    # 일반적인 경우: LIKE 검색
+                    else:
+                        p_key = f'multi_{key}_{idx}'
+                        or_conds.append(f'{prefix}."{db_col}" LIKE :{p_key}')
+                        params[p_key] = f"%{val}%"
+                
+                if or_conds:
+                    where_clauses.append(f"({' OR '.join(or_conds)})")
 
-    # 3. 범위 검색 (ranges)
+    # 3. 범위 검색 처리 (기존과 동일)
     ranges = filters.get('ranges', {})
-    sales_min = None
-    sales_max = None
+    sales_min, sales_max = None, None
     for col_key, val_dict in ranges.items():
         if col_key == '매각일':
             sales_min = normalize_date(val_dict.get('min'))
             sales_max = normalize_date(val_dict.get('max'))
             continue
-
         db_col = FILTER_MAPPING.get(col_key, col_key)
-        is_date_col = col_key in ['사용승인일', '대수선 및 리모델링']
-        
+        prefix = get_prefix(db_col)
+        is_date_col = col_key in ['사용승인일', '대수선 및 리모델링', '접수일']
         for bound in ['min', 'max']:
             if bound in val_dict and str(val_dict[bound]).strip():
                 p_key = f"{bound}_{col_key.replace(' ', '_')}"
                 raw_val = val_dict[bound]
                 operator = ">=" if bound == 'min' else "<="
-                
                 if is_date_col:
-                    where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
+                    where_clauses.append(f'{prefix}."{db_col}" {operator} :{p_key}')
                     params[p_key] = normalize_date(raw_val)
                 else:
                     try:
                         val_float = float(raw_val)
                         params[p_key] = val_float
                         if bound == 'min' and val_float == 0:
-                            where_clauses.append(f'(L."{db_col}" >= :{p_key} OR L."{db_col}" IS NULL)')
+                            where_clauses.append(f'({prefix}."{db_col}" >= :{p_key} OR {prefix}."{db_col}" IS NULL)')
                         else:
-                            where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
+                            where_clauses.append(f'{prefix}."{db_col}" {operator} :{p_key}')
                     except (ValueError, TypeError):
-                        where_clauses.append(f'L."{db_col}" {operator} :{p_key}')
+                        where_clauses.append(f'{prefix}."{db_col}" {operator} :{p_key}')
                         params[p_key] = raw_val
 
-    # 4. 매각일 및 매각 회수 복합 로직
+    # 4. 매각 회수 복합 로직 (기존과 동일)
     sales_count = filters.get('sales_count', 'all')
     if sales_min or sales_max or sales_count != 'all':
         sales_conds = []
         if sales_count in ['1', '2', '3']:
-            if sales_count == '3':
-                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NOT NULL)")
-            elif sales_count == '2':
-                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NULL)")
-            elif sales_count == '1':
-                sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NULL AND L.\"매각일3\" IS NULL)")
-        
+            if sales_count == '3': sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NOT NULL)")
+            elif sales_count == '2': sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NOT NULL AND L.\"매각일3\" IS NULL)")
+            elif sales_count == '1': sales_conds.append("(L.\"매각일1\" IS NOT NULL AND L.\"매각일2\" IS NULL AND L.\"매각일3\" IS NULL)")
         if sales_min or sales_max:
             range_parts = []
             for col in ["매각일1", "매각일2", "매각일3"]:
                 p_parts = []
-                if sales_min:
-                    p_parts.append(f'L."{col}" >= :s_min')
-                    params['s_min'] = int(sales_min) 
-                if sales_max:
-                    p_parts.append(f'L."{col}" <= :s_max')
-                    params['s_max'] = int(sales_max)
+                if sales_min: p_parts.append(f'L."{col}" >= :s_min'); params['s_min'] = int(sales_min)
+                if sales_max: p_parts.append(f'L."{col}" <= :s_max'); params['s_max'] = int(sales_max)
                 range_parts.append(f"({' AND '.join(p_parts)})")
             sales_conds.append(f"({' OR '.join(range_parts)})")
-        
-        if sales_conds:
-            where_clauses.append(f"({' AND '.join(sales_conds)})")
+        if sales_conds: where_clauses.append(f"({' AND '.join(sales_conds)})")
 
-    if where_clauses: return " WHERE " + " AND ".join(where_clauses)
-    else: return " WHERE 1=0"
-
+    if where_clauses:
+        return " WHERE " + " AND ".join(where_clauses)
+    return " WHERE 1=0"
 
 
 # --- 라우트 정의 ---
@@ -281,7 +338,12 @@ def get_data():
     try:
         with engine.connect() as conn:
             # 전체 개수 확인 (JOIN 불필요하므로 기존 로직 유지하되 L 별칭 추가)
-            count_sql = f"SELECT COUNT(*) FROM {TABLE_NAME} L" + where_sql
+            count_sql = f"""
+            SELECT COUNT(*) 
+            FROM {TABLE_NAME} L
+            LEFT JOIN prop_main P ON L."고유번호" = P."고유번호"
+            {where_sql}
+            """
             total_count = conn.execute(text(count_sql), params).scalar()
 
             # [핵심] LEFT JOIN 쿼리 (FROM seoul_land_info L 로 별칭 부여)
@@ -309,7 +371,7 @@ def get_data():
         app.logger.error(f"SQL Error: {e}")
         return jsonify({"error": str(e)}), 500
     
-# app.py 내 get_map_data API 부분 수정
+
 # app.py 내 get_map_data API 부분 수정
 @app.route('/api/get_map_data', methods=['POST'])
 def get_map_data():
@@ -331,7 +393,14 @@ def get_map_data():
     final_sql = f"{where_sql} AND {spatial_cond}"
 
     # [수정] FROM {TABLE_NAME} 뒤에 L 별칭 추가 (UndefinedTable 오류 해결)
-    sql_query = f"SELECT L.x, L.y, L.\"주소\" FROM {TABLE_NAME} L {final_sql} LIMIT 3000"
+    # 지도 데이터 조회 시에도 JOIN 추가
+    sql_query = f"""
+        SELECT L.x, L.y, L."주소" 
+        FROM {TABLE_NAME} L 
+        LEFT JOIN prop_main P ON L."고유번호" = P."고유번호"
+        {final_sql} 
+        LIMIT 3000
+    """
     
     app.logger.info("=== [MAP DATA QUERY] ===")
     app.logger.info(f"Generated SQL: {sql_query}")
@@ -469,38 +538,28 @@ def save_prop_main():
 def get_propDetail_data():
     req = request.json
     pnu_val = req.get('고유번호')
-
     if not pnu_val:
-        return jsonify({"success": False, "message": "고유번호가 제공되지 않았습니다."}), 400
+        return jsonify({"success": False, "message": "고유번호 누락"}), 400
 
-    # 1. LIMIT 1을 추가하여 단 한 개의 행만 가져옵니다.
-    # 2. ORDER BY를 통해 '가장 정확한(대표적인)' 데이터가 위로 오게 정렬합니다.
+    # LIMIT 1을 제거하여 모든 층 정보를 가져옵니다.
     sql = text("""
         SELECT *
         FROM prop_details
         WHERE "고유번호" = :pnu
         ORDER BY "층" ASC, "id" ASC
-        LIMIT 1
     """)
 
     try:
         with engine.connect() as conn:
-            # 변수명을 :pnu와 일치시킵니다. (기존 addr -> pnu_val)
             result = conn.execute(sql, {"pnu": pnu_val})
-            row = result.fetchone() # 하나만 가져올 때는 fetchone()이 효율적입니다.
+            # fetchone() 대신 fetchall()을 사용하여 리스트로 만듭니다.
+            rows = result.mappings().all()
             
-            if row:
-                # 단일 행을 딕셔너리로 변환
-                data = dict(row._mapping)
-                return jsonify({
-                    "success": True, 
-                    "data": data
-                })
-            else:
-                return jsonify({"success": False, "message": "해당 고유번호의 정보를 찾을 수 없습니다."}), 404
-
+            return jsonify({
+                "success": True, 
+                "data": [dict(row) for row in rows] # 이제 배열이 반환됩니다.
+            })
     except Exception as e:
-        print(f"Error fetching property details: {e}")
         return jsonify({"success": False, "message": str(e)}), 500
     
 @app.route('/api/register_property_final', methods=['POST'])
@@ -916,9 +975,13 @@ def get_floors():
 
 @app.route('/signup', methods=['POST'])
 def signup():
+    key = "k108080"
     data = request.get_json()
     u_id = data.get('user_id')
     u_role = data.get('role')
+    
+    if key != data.get('key'):
+        return jsonify({"message": "유효하지 않는 인증키입니다."}), 405
 
     if Users.query.get(u_id):
         return jsonify({"message": "이미 존재하는 아이디입니다."}), 400

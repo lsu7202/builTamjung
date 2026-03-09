@@ -1,6 +1,6 @@
 import { convertAddressToPNU } from "./bjdcode.js";
 
-
+let PNU;
 // --- 기존 변수 유지 ---
 let sourceImg = null;
 let imgX = 0; let imgY = 0; let imgScale = 1;
@@ -306,7 +306,7 @@ let TitleAddr = "브리핑자료"
 let fullAddr = "", area = "", area_p = "", areaUsing = "", offLandPrice = "", offLandPrice_m = "";
 let floorArea = "", floorArea_p = "", buildArea = "", buildArea_p = "", buildingLandRatio = "", floorAreaRatio = "";
 let under = "", above = "", parking = "", buildDate = "", lift = "";
-let price = "", returnrate = "", pricebyarea = "", pricebyfloor = "", alldeposit = "", allrent = "" ;
+let price = "", returnrate = "", pricebyarea = "", pricebyfloor = "", alldeposit = "", allrent = "", roadUsing="";
 
 // --- [추가] DB 컬럼 식별자 전역 변수 ---
 const DB_COL_FLOOR = "층";
@@ -322,7 +322,7 @@ let leaseData = [];
 
 async function fetchLeaseData(fullAddress) {
 
-    const pnu = convertAddressToPNU(fullAddress);
+    const pnu = PNU;
     const addressParts = fullAddress.split(' ');
     const filteredParts = addressParts.slice(2);
     TitleAddr = filteredParts.join(' ');
@@ -351,7 +351,7 @@ async function fetchLeaseData(fullAddress) {
                 area: Number(item[DB_COL_AREA] || 0).toFixed(2),
                 period: item[DB_COL_PERIOD] || "-"
             }));
-            console.log("임대현황 로드 완료:", leaseData.length, "건");
+            console.log("임대현황 로드 완료:", leaseData);
         } else {
             leaseData = [];
             console.warn("임대현황 데이터가 없습니다.");
@@ -388,13 +388,15 @@ async function searchAddressForPPT() {
         }
 
         const building = results[0];
+        console.log(building)
+        PNU = building.고유번호;
 
         // 1. 계산을 위한 기초 숫자 파싱 (내부 로컬 변수)
         const rawArea = parseFloat(building.대지면적) || 0;
         const rawFloorArea = parseFloat(building.연면적) || 0;
         const rawBuildArea = parseFloat(building.건축면적) || 0;
         const rawOffLandPrice = parseInt(building.공시지가) || 0;
-        const rawPrice = parseInt(building.매매가억) || 0;
+        const rawPrice = ((parseFloat(building.매매가) || 0) / 100000000.0).toFixed(2);
         const rawDate = String(building.사용승인일) || "";
         
 
@@ -421,6 +423,7 @@ async function searchAddressForPPT() {
         floorAreaRatio = (building.용적률 || 0) + "%";
 
         // [기타 정보]
+        roadUsing = building.도로 || "";
         areaUsing = (building.용도지역 || "").replace(/\(.*?\)/g, "").trim();
         under = parseInt(building.규모지하) ? "B" + parseInt(building.규모지하) : "B1";
         above = parseInt(building.규모지상) ? parseInt(building.규모지상) + "F" : "1F";
@@ -428,11 +431,11 @@ async function searchAddressForPPT() {
         buildDate = rawDate.replace(/-/g, '/');
         lift = parseInt(building.엘리베이터 || "0") + "대";
 
-        returnrate = parseFloat(building.수익률 || "0");
-        pricebyarea = parseInt(price / area_p).toLocaleString();;
-        pricebyfloor = parseInt(price / floorArea_p).toLocaleString();;
-        alldeposit = parseInt(building.총보증금 || "0").toLocaleString();;
-        allrent = parseInt(building.총월세부가세별도 || "0").toLocaleString();;
+        returnrate = parseFloat(building.수익률 || "0").toFixed(2);
+        pricebyarea = (parseInt(building.대지면적평단가 || 0) / 10000).toLocaleString()
+        pricebyfloor = (parseInt(building.연면적평단가 || 0) / 10000).toLocaleString()
+        alldeposit = (parseInt(building.총보증금 || 0) / 10000).toLocaleString()
+        allrent = (parseInt(building.총월세부가세별도 || 0) / 10000).toLocaleString() 
 
         // 입력창 업데이트
         addressInput.value = fullAddr;
@@ -605,7 +608,7 @@ async function generatePPT() {
 
         // Slide 2: 건물개요 (버튼 클릭 없이 캔버스에서 즉시 추출)
         const slide2 = pres.addSlide();
-        slide2.addText("01 건물개요", {
+        slide2.addText("01", {
             x: 0.2, y: 0.35, fontSize: 28, color: "333333", bold: false,
             shadow: {
                 type: "outer",    // 바깥쪽 그림자
@@ -634,7 +637,7 @@ async function generatePPT() {
             ],
             [
                 { text: "도로상황", options: { fill: COL_LIGHT_GRAY, align: "center" } },
-                { text: "", options: { colspan: 3, align: "center" } } // DB에 도로상황 정보가 있다면 여기에 변수 입력
+                { text: roadUsing, options: { colspan: 3, align: "center" } } // DB에 도로상황 정보가 있다면 여기에 변수 입력
             ],
 
             // 2. 토지정보 섹션 (3행)
@@ -690,22 +693,22 @@ async function generatePPT() {
             [
                 { text: "금융정보", options: { rowspan: 3, fill: COL_BLUE, color: COL_WHITE, align: "center", valign: "middle", bold: true } },
                 { text: "매매가", options: { fill: COL_LIGHT_GRAY, align: "center", color: COL_BLUE, bold: true } },
-                { text: `${price}억`, options: { align: "center", color: "FF0000", bold: true, fontSize: 14 } },
+                { text: `${price} 억`, options: { align: "center", color: "FF0000", bold: true, fontSize: 14 } },
                 { text: "수익률", options: { fill: COL_LIGHT_GRAY, align: "center", color: COL_BLUE, bold: true } },
                 // 수익률 데이터는 DB에 있다면 해당 변수를, 없다면 ""를 입력하세요.
                 { text: `${returnrate}%`, options: { align: "center", color: "FF0000", bold: true, fontSize: 14 } } 
             ],
             [
                 { text: "평단가", options: { fill: COL_LIGHT_GRAY, align: "center" } },
-                { text: `${pricebyarea}원`, options: { align: "center" } }, // 대지 평단가 계산 로직 필요 시 추가
+                { text: `${pricebyarea} 만원`, options: { align: "center" } }, // 대지 평단가 계산 로직 필요 시 추가
                 { text: "평단가(연면적당)", options: { fill: COL_LIGHT_GRAY, align: "center", fontSize: 8 } },
-                { text: `${pricebyfloor}원`, options: { align: "center" } }
+                { text: `${pricebyfloor} 만원`, options: { align: "center" } }
             ],
             [
                 { text: "보증금", options: { fill: COL_LIGHT_GRAY, align: "center" } },
-                { text: `${alldeposit}원`, options: { align: "center" } }, // 임대현황 합계 데이터 활용 권장
+                { text: `${alldeposit} 만원`, options: { align: "center" } }, // 임대현황 합계 데이터 활용 권장
                 { text: "임대료", options: { fill: COL_LIGHT_GRAY, align: "center" } },
-                { text: `${allrent}원`, options: { align: "center" } }
+                { text: `${allrent} 만원`, options: { align: "center" } }
             ],
             [
                 {
@@ -752,13 +755,13 @@ async function generatePPT() {
         });
 
         // 02 위치도 생성 (단 한 줄로 끝!)
-        addImageSlide_location(pres, "02 위치도", [map1Handler, map2Handler], COL_BLUE, COL_WHITE);
+        addImageSlide_location(pres, "02", [map1Handler, map2Handler], COL_BLUE, COL_WHITE);
 
         // 03 매물사진 생성 (단 한 줄로 끝!)
-        addImageSlide(pres, "03 매물사진", roomCanvasHandlers, COL_BLUE, COL_WHITE);
+        addImageSlide(pres, "03", roomCanvasHandlers, COL_BLUE, COL_WHITE);
 
         const slide4 = pres.addSlide();
-        slide4.addText("04 임대 세부 내역", {
+        slide4.addText("04", {
             x: 0.2, y: 0.35, fontSize: 28, color: "333333", bold: false,
             shadow: {
                 type: "outer",    // 바깥쪽 그림자
@@ -795,10 +798,6 @@ async function generatePPT() {
             // [추가] Area 포맷팅 로직: 소수점이 .00이면 정수로, 아니면 소수점 2자리 유지
             const areaVal = parseFloat(item.area) || 0;
             const displayArea = (areaVal % 1 === 0) ? areaVal.toString() : areaVal.toFixed(2);
-
-            // [추가] 금액 포맷팅 (개별 행): 만원 단위 쉼표 적용
-            // fetchLeaseData에서 이미 toLocaleString() 처리가 되어 있으므로 그대로 사용하거나, 
-            // 안전하게 다시 숫자로 바꿔서 처리할 수 있습니다.
             const displayDeposit = (parseFloat(item.deposit.replace(/,/g, '')) || 0).toLocaleString();
             const displayRent = (parseFloat(item.rent.replace(/,/g, '')) || 0).toLocaleString();
             const displayManagement = (parseFloat(item.management.replace(/,/g, '')) || 0).toLocaleString();
@@ -806,7 +805,7 @@ async function generatePPT() {
             leaseTableRows.push([
                 { text: item.floor, options: { align: "center" } },
                 { text: item.type, options: { align: "center" } },
-                { text: displayArea, options: { align: "center" } }, 
+                { text: displayArea , options: { align: "center" } }, 
                 { text: displayDeposit + " 만", options: { align: "center" } },
                 { text: displayRent + " 만", options: { align: "center" } },
                 { text: displayManagement + " 만", options: { align: "center" } },
@@ -878,7 +877,7 @@ async function generatePPT() {
             // 2. [05 건축물정보] 영역 디자인
             if (buildInfoHandler) {
                 // 좌측 타이틀 (세로)
-                slide56.addText("05\n건\n축\n물\n정\n보", {
+                slide56.addText("05", {
                     x: 0.1, y: 0.22, w: 0.7, fontSize: 28, color: "333333",
                     fontFace: "맑은고딕", align: "center", valign: "top",
                     shadow: {
@@ -908,7 +907,7 @@ async function generatePPT() {
             // 4. [06 토지이용계획] 영역 디자인
             if (landPlanHandler) {
                 // 우측 타이틀 (세로)
-                slide56.addText("06\n토\n지\n이\n용\n계\n획", {
+                slide56.addText("06", {
                     x: 5, y: 0.22, w: 0.7, fontSize: 28, color: "333333",
                     fontFace: "맑은고딕", align: "center", valign: "top",
                     shadow: {
@@ -920,10 +919,7 @@ async function generatePPT() {
                         offset: 6         // 간격(거리) 6pt
                     }
                 });
-                // 이미지 앞 세로 구분선
-                slide56.addShape(pres.ShapeType.rect, {
-                    x: 5.62, y: 0.19, w: 0.02, h: 6.44, fill: { color: COL_BLUE }
-                });
+                
                 // 이미지 삽입
                 const cfg6 = LAYOUT_CONFIG.splitFull[1];
                 slide56.addImage({ data: landPlanHandler.getData(), x: cfg6.x, y: cfg6.y, w: cfg6.w, h: cfg6.h });

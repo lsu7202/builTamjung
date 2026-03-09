@@ -639,6 +639,8 @@ async function loadSessionInfo() {
         if (rs.logged_in) {
             
             console.log("세션 정보 로드 성공:", rs);
+            const userRoleLabel = rs.role === 'MASTER' ? '관리자' : '직원';
+            document.getElementById('userInfoText').innerText = `아이디: ${rs.user_id}  이름: ${rs.user_name} 내 직급: ${userRoleLabel} 소속: ${rs.team_id}`
             return rs;
         } else {
             console.log("로그인되지 않은 상태입니다.");

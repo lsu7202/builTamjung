@@ -127,14 +127,25 @@ async function searchPropertyData() {
     if (pnuList.length === 0) return alert("PNU 변환 실패");
 
     try {
-        const [resMain, resDetail, resProp] = await Promise.all([
+        const [resMain] = await Promise.all([
             fetch('/api/get_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "고유번호": pnuList, "limit": 1 }) }),
-            fetch('/api/get_propDetail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "고유번호": pnuList[0] }) }),
-            fetch(`/api/get_prop_main?고유번호=${pnuList[0]}`)
         ]);
-        const mainResult = await resMain.json(), detailResult = await resDetail.json(), propData = await resProp.json();
+        const mainResult = await resMain.json();
         return { 
             main: (mainResult.data && mainResult.data.length > 0) ? mainResult.data[0] : {}, 
+            
+        };
+    } catch (e) { alert("서버 통신 에러"); }
+}
+
+async function searchPropertyDetailData(pnu) {
+    try {
+        const [resDetail, resProp] = await Promise.all([
+            fetch('/api/get_propDetail', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ "고유번호": pnu }) }),
+            fetch(`/api/get_prop_main?고유번호=${pnu}`)
+        ]);
+        const  detailResult = await resDetail.json(), propData = await resProp.json();
+        return { 
             details: detailResult.success ? detailResult.data : [], 
             prop: propData.data || {} 
         };
@@ -143,11 +154,16 @@ async function searchPropertyData() {
 
 async function fillPropertyDataHandler() {
     const rs = await searchPropertyData();
+    console.log(rs)
     if (!rs) return;
-    const { main, details, prop } = rs;
+    const { main} = rs;
     const session = await loadSessionInfo();
 
     PNU = main.pnu_key;
+    const drs = await searchPropertyDetailData(PNU);
+    console.log(drs)
+    const {details, prop} = drs;
+
     if(PNU) document.getElementById('btn-submit-property').disabled = false;
 
     // [1] 세부 정보 및 담당자 (Val.set 통일)
@@ -215,12 +231,18 @@ async function fillPropertyDataHandler() {
     Val.set('reg-sale-date1', main.매각일1 || ""); Val.set('reg-sale-amt1', main.매각액1 || 0);
     Val.set('reg-sale-date2', main.매각일2 || ""); Val.set('reg-sale-amt2', main.매각액2 || 0);
     Val.set('reg-sale-date3', main.매각일3 || ""); Val.set('reg-sale-amt3', main.매각액3 || 0);
+    Val.set('reg-sale-profit', main.매각손익률 || ""); 
     Val.set('reg-naver-cur', main.네이버광고 || 0); Val.set('reg-naver-past', main.네이버광고과거 || 0);
+    Val.set()
     Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "무");
 
     const container = document.getElementById('floor-rows-container');
     container.innerHTML = "";
-    if (details.length > 0) details.forEach(d => addFloorRow(d));
+    if (details) {
+        console.log(details)
+        details.forEach(d => addFloorRow(d));
+    }
+        
 
     calculatePropertyStats();
     loadMemos(PNU);
@@ -233,6 +255,8 @@ function calculatePropertyStats() {
     const salePrice = Val.get('reg-sale-price'), landArea = Val.get('reg-land-area'), totalArea = Val.get('reg-total-area-val');
     const buildArea = Val.get('reg-build-area'), farArea = Val.get('reg-far-area'), gongsi = Val.get('reg-gongsi-cur');
     const bcLegal = Val.get('reg-legal-bc'), farLegal = Val.get('reg-legal-far');
+    const saleamt1 = Val.get('reg-sale-amt1'), saleamt2 = Val.get('reg-sale-amt2');
+    const navercul = Val.get('reg-naver-cur'), naverpast = Val.get('reg-naver-past')
 
     let fullSum = { sec: 0, rent: 0, man: 0 }, currentSum = { sec: 0, rent: 0, man: 0 };
     document.querySelectorAll('.property-row').forEach(row => {
@@ -269,6 +293,11 @@ function calculatePropertyStats() {
         Val.set('reg-self-yield-display', ((fullSum.rent * 12) - (loan * (loanRate / 100))) / investCash * 100);
     }
 
+    Val.set('reg-sale-profit', ((saleamt1 - saleamt2) / saleamt2 * 100).toFixed(2))
+
+    Val.set('reg-naver-rate', ((navercul - naverpast ) / naverpast * 100).toFixed(2))
+    
+
     Val.set('reg-bc-diff', Val.get('reg-bc-ratio') - bcLegal);
     Val.set('reg-far-diff', Val.get('reg-far-ratio') - farLegal);
 }
@@ -290,19 +319,33 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // addFloorRow, autoComma, saveMemo, loadMemos 등 유틸 함수 유지
-function addFloorRow(data = null) {
+function addFloorRow(data) {
     const container = document.getElementById('floor-rows-container');
     const row = document.createElement('div');
     row.className = "grid grid-cols-12 gap-2 p-2 bg-white border rounded-lg items-center shadow-sm property-row";
+    
+    // DB의 Boolean(false/true)을 "무"/"유"로 변환하여 매칭
+    const isEmpty = data?.공실유무 === true;
+    
+    // DB의 '원' 단위를 화면 표시용 '만원'으로 변환 (10억 -> 100,000)
+    const displaySec = data?.보증금 ? Math.round(data.보증금 / 10000).toLocaleString() : '0';
+    const displayRent = data?.임대료 ? Math.round(data.임대료 / 10000).toLocaleString() : '0';
+    const displayMan = data?.월관리비 ? Math.round(data.월관리비 / 10000).toLocaleString() : '0';
+
     row.innerHTML = `
         <div class="col-span-1"><input type="text" class="w-full border rounded p-1 text-center" value="${data?.층 || ''}"></div>
         <div class="col-span-2"><input type="text" class="w-full border rounded p-1" value="${data?.형태 || ''}"></div>
         <div class="col-span-1"><input type="text" class="w-full border rounded p-1 text-right" value="${data?.평수 || ''}"></div>
-        <div class="col-span-2"><input type="text" class="floor-sec w-full border rounded p-1 text-right" value="${(data?.보증금 || 0).toLocaleString()}" onblur="autoComma(this); calculatePropertyStats()"></div>
-        <div class="col-span-2"><input type="text" class="floor-rent w-full border rounded p-1 text-right" value="${(data?.임대료 || 0).toLocaleString()}" onblur="autoComma(this); calculatePropertyStats()"></div>
-        <div class="col-span-1"><input type="text" class="floor-man w-full border rounded p-1 text-right" value="${(data?.월관리비 || 0).toLocaleString()}" onblur="autoComma(this); calculatePropertyStats()"></div>
+        <div class="col-span-2"><input type="text" class="floor-sec w-full border rounded p-1 text-right" value="${displaySec}" onblur="autoComma(this); calculatePropertyStats()"></div>
+        <div class="col-span-2"><input type="text" class="floor-rent w-full border rounded p-1 text-right" value="${displayRent}" onblur="autoComma(this); calculatePropertyStats()"></div>
+        <div class="col-span-1"><input type="text" class="floor-man w-full border rounded p-1 text-right" value="${displayMan}" onblur="autoComma(this); calculatePropertyStats()"></div>
         <div class="col-span-1"><input type="text" class="w-full border rounded p-1" value="${data?.임대차기간 || ''}"></div>
-        <div class="col-span-1"><select class="floor-empty w-full border rounded p-1" onchange="calculatePropertyStats()"><option value="무" ${data?.공실유무==='무'?'selected':''}>무</option><option value="유" ${data?.공실유무==='유'?'selected':''}>유</option></select></div>
+        <div class="col-span-1">
+            <select class="floor-empty w-full border rounded p-1" onchange="calculatePropertyStats()">
+                <option value="무" ${!isEmpty ? 'selected' : ''}>무</option>
+                <option value="유" ${isEmpty ? 'selected' : ''}>유</option>
+            </select>
+        </div>
         <div class="col-span-1 text-center"><button onclick="this.parentElement.parentElement.remove(); calculatePropertyStats();" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button></div>
     `;
     container.appendChild(row);
