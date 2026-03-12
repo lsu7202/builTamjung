@@ -592,6 +592,15 @@
                             </div>
                         </div>
                         <div class="filter-row">
+                            <label class="filter-label">공실유무총괄</label>
+                            <select class="common-input" data-col="공실유무총괄">
+                                <option value=""></option>
+                                <option value="모름">모름</option>
+                                <option value="유">유</option>
+                                <option value="유">무</option>
+                            </select>
+                        </div>
+                        <div class="filter-row">
                             <label class="filter-label">공실제외수익률</label>
                             <div class="range-wrapper">
                                 <input type="number" class="range-input" data-col="공실제외수익률"><span>~</span><input
@@ -624,6 +633,13 @@
                             <div class="range-wrapper">
                                 <input type="number" class="range-input" data-col="총관리비"><span>~</span><input
                                     type="number" class="range-input" data-col="총관리비">
+                            </div>
+                        </div>
+                        <div class="filter-row">
+                            <label class="filter-label">연면적당임대료</label>
+                            <div class="range-wrapper">
+                                <input type="number" class="range-input" data-col="연면적당임대료"><span>~</span><input
+                                    type="number" class="range-input" data-col="연면적당임대료">
                             </div>
                         </div>
                         <div class="filter-row">
@@ -1218,14 +1234,24 @@
                                                 class="w-full border rounded p-1 text-xs"
                                                 onblur="Val.sync(this); calculatePropertyStats();">
                                         </div>
-                                        <div><label class="text-[10px] text-gray-400">총월세(만)</label>
-                                            <input type="text" id="reg-total-rent" data-unit="man"
+                                        <div><label class="text-[10px] text-gray-400">총임대료(만)</label>
+                                            <input type="text" id="reg-total-rent" data-unit="man" readonly
                                                 class="w-full border rounded p-1 text-xs"
                                                 onblur="Val.sync(this); calculatePropertyStats();">
                                         </div>
                                         <div><label class="text-[10px] text-gray-400">총관리비(만)</label>
-                                            <input type="text" id="reg-total-manage" data-unit="man"
+                                            <input type="text" id="reg-total-manage" data-unit="man" readonly
                                                 class="w-full border rounded p-1 text-xs"
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">연면적당임대료</label>
+                                            <input type="text" id="reg-land-rent" data-unit="man" readonly
+                                                class="w-full border rounded p-1 text-xs"
+                                                onblur="Val.sync(this); calculatePropertyStats();">
+                                        </div>
+                                        <div><label class="text-[10px] text-gray-400">공실유무총괄</label>
+                                            <input type="text" id="reg-isEmpty-total" readonly
+                                                class="w-full border rounded p-1 text-xs" data-unit="text"
                                                 onblur="Val.sync(this); calculatePropertyStats();">
                                         </div>
                                     </div>
@@ -1249,7 +1275,7 @@
                                         <div class="flex justify-between items-center mb-2">
                                             <label class="text-[11px] font-bold text-blue-800">자기자본 수익률 (<span
                                                     id="loan-amount-display">대출 0억</span>)</label>
-                                            <div id="reg-self-yield-display" data-unit="rate"
+                                            <div id="reg-self-yield-display" data-unit="rate" readonly
                                                 class="font-black text-blue-700 text-sm"></div>
                                         </div>
                                         <div class="flex gap-2">
@@ -1486,6 +1512,7 @@
                                             class="font-bold">-</span> | 보증금: <span id="sum-sec-current"
                                             data-unit="man">-</span> | 임대료: <span id="sum-rent-current"
                                             data-unit="man">-</span> | 관리비: <span id="sum-man-current"
+                                            data-unit="man">-</span> | 평당임대료: <span id="rent-current-land"
                                             data-unit="man">-</span></p>
                                 </div>
                                 <div class="space-y-1 border-l pl-4">
@@ -1494,6 +1521,7 @@
                                             class="font-bold">-</span> | 보증금: <span id="sum-sec-full"
                                             data-unit="man">-</span> | 임대료: <span id="sum-rent-full"
                                             data-unit="man">-</span> | 관리비: <span id="sum-man-full"
+                                            data-unit="man">-</span> | 평당임대료: <span id="rent-full-land"
                                             data-unit="man">-</span></p>
                                 </div>
                             </div>
@@ -1698,7 +1726,7 @@
             '빌탐정광고등록유무': '빌탐정광고등록유무', '건물용도': '건물용도',
             '명도': '명도', '용도변경': '용도변경', '멸실': '멸실', '영상번호/분/초': '영상번호분초',
 
-            'AI추정가': 'AI추정가', 'AI추정가와 매매가 비율': 'AI추정가매매가비율', '총보증금': '총보증금', '총월세(부가세 별도)': '총월세부가세별도', '총관리비': '총관리비', '수익률': '수익률',
+            'AI추정가': 'AI추정가', 'AI추정가와 매매가 비율': 'AI추정가매매가비율', '총보증금': '총보증금', '총월세(부가세 별도)': '총월세부가세별도', '총관리비': '총관리비', '수익률': '수익률', '연면적당임대료': '연면적당임대료', '공실유무총괄': '공실유무총괄',
             '공실제외수익률': '공실제외수익률', '자기자본수익률': '자기자본수익률', '소유자타입': '소유자타입', '소유자명': '소유자명', '전화번호': '전화번호',
             '네이버광고': '네이버광고', '네이버광고과거': '네이버광고과거', '네이버광고상승률': '네이버광고상승률',
             '매각일1': '매각일1', '매각일2': '매각일2', '매각일3': '매각일3', '매각손익': '매각손익률',
@@ -2325,7 +2353,8 @@
             if (dateCols_v2.includes(displayHeader)) config.renderer = dateRenderer2;
 
             // 포맷팅 그룹
-            const moneyCols = ['총관리비', '총월세(부가세 별도)', '총보증금'];
+            const moneyCols = [];
+            const moneyCols_man = ['총관리비', '총월세(부가세 별도)', '총보증금', '연면적당임대료'];
             const moneyCols_million = ['매매가(억)', 'AI추정가', '네이버광고', '네이버광고과거', '매각액1', '매각액2', '매각액3', '공시지가 기준']
             const decimalCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적'];
             const gongsiCols = ['공시지가(현재)', '공시지가(5년전)', '공시지가(10년전)'];
@@ -2393,7 +2422,26 @@
                     // 우측 정렬 유지
                     td.style.textAlign = 'right';
                 };
-            } else if (decimalCols.includes(displayHeader)) {
+            } else if (moneyCols_man.includes(displayHeader)) {
+                config.renderer = function (instance, td, row, col, prop, value, cellProperties) {
+                    // 기본 숫자 렌더러 스타일 적용
+                    Handsontable.renderers.NumericRenderer.apply(this, arguments);
+
+                    if (value !== null && value !== undefined && value !== "") {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue)) {
+                            // 100,000,000으로 나누어 '억' 단위 계산 후 소수점 2자리 고정
+                            const eokValue = Math.round(numValue / 10000);
+                            td.innerText = eokValue.toLocaleString() + " 만원";
+                        }
+                    }
+                    // 우측 정렬 유지
+                    td.style.textAlign = 'right';
+                };
+            }
+
+
+            else if (decimalCols.includes(displayHeader)) {
                 // ... (기존 평/m2 변환 렌더러 코드 유지) ...
                 config.renderer = function (instance, td, row, col, prop, value, cellProperties) {
                     Handsontable.renderers.TextRenderer.apply(this, arguments);
@@ -2697,10 +2745,40 @@
          * 4. 초기화 함수
          */
         function resetRegistration() {
-            document.getElementById('reg-address-input').value = '';
+            // 사용자가 명시적으로 지정한 ID 리스트만 사용합니다.
+            const toBlank = ['reg-owner-name', 'reg-contact', 'reg-video-timestamp', 'reg-sale-price', 'reg-invest-cash', 'reg-loan-rate'];
+            const toInit = ['reg-owner-type', 'reg-intent-to-buy', 'reg-relationship', 'reg-inclination', 'reg-status', 'reg-urgency', 'reg-location', 'reg-grade', 'reg-b-usage', 'reg-has-photo', 'reg-has-brief', 'reg-eviction', 'reg-usage-change', 'reg-demolition'];
+
+            // 1. Val 객체 초기화 (명시된 ID만)
+            toBlank.forEach(id => {
+                Val.set(id, '');
+            });
+
+            toInit.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.options.length > 0) {
+                    // 셀렉트 박스의 첫 번째 옵션값으로 Val 객체 설정
+                    Val.set(id, el.options[0].value);
+                }
+            });
+
+            // 2. UI 반영 (명시된 ID만)
+            [...toBlank, ...toInit].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.value = Val.get(id);
+                }
+            });
+
+            // 3. 공통 UI 정리 (필수 로직)
             document.getElementById('floor-rows-container').innerHTML = '';
             document.getElementById('floor-input-section').classList.add('hidden');
             document.getElementById('btn-submit-property').disabled = true;
+
+            // 4. 리스트에 포함된 값들에 대한 통계 갱신
+            if (typeof calculatePropertyStats === 'function') {
+                calculatePropertyStats();
+            }
         }
 
         document.getElementById('btnBriefing').addEventListener('click', function () {

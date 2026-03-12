@@ -122,6 +122,8 @@ FILTER_MAPPING = {
     '매물번호': '매물번호',
     '매매가': '매매가',
     '수익률': '수익률',
+    '공실유무총괄' : '공실유무총괄',
+    '연면적당임대료' : '연면적당임대료',
     '공실제외수익률': '공실제외수익률',
     '자기자본수익률': '자기자본수익률',
     '총보증금': '총보증금',
@@ -1140,6 +1142,31 @@ def update_memo():
         memo.created_at = db.func.now() # 수정 시간 업데이트
         db.session.commit()
         return jsonify({"message": "수정 완료"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
+    
+# 메모 삭제 엔드포인트 (기존 update_memo 아래에 추가)
+@app.route('/api/delete_memo', methods=['POST'])
+def delete_memo():
+    data = request.get_json()
+    memo_id = data.get('id')
+    
+    if not memo_id:
+        return jsonify({"message": "메모 ID가 필요합니다."}), 400
+    
+    memo = PropMemo.query.get(memo_id)
+    if not memo:
+        return jsonify({"message": "메모를 찾을 수 없습니다."}), 404
+    
+    # 본인 확인 로직 (자신이 작성한 메모만 삭제 가능)
+    if memo.writer_id != session.get('user_id'):
+        return jsonify({"message": "삭제 권한이 없습니다."}), 403
+
+    try:
+        db.session.delete(memo)
+        db.session.commit()
+        return jsonify({"message": "메모가 삭제되었습니다."}), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500

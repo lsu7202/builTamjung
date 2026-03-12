@@ -49,7 +49,9 @@ class PropMain(db.Model):
     total_monthly_rent = db.Column(db.Numeric, name="총월세부가세별도")
     total_management_fee = db.Column(db.Numeric, name="총관리비")
     yield_rate = db.Column(db.Float, name="수익률")
+    isEmpty_total = db.Column(db.Text, name="공실유무총괄")
     except_empty_yield = db.Column(db.Float, name="공실제외수익률")
+    floor_area_per_rent = db.Column(db.Numeric, name="연면적당임대료")
     self_yield = db.Column(db.Float, name="자기자본수익률")
     invest_cash = db.Column(db.Numeric, name="자기자본")
     loan_rate = db.Column(db.Float, name="이자율")
@@ -72,6 +74,12 @@ class PropMain(db.Model):
     intent_to_buy = db.Column(db.Text, name="매수의향서")
     toad_ad = db.Column(db.Text, name="빌탐정광고등록유무")
 
+    __table_args__ = (
+        Index('idx_prop_main_pnu', '고유번호'),
+        Index('idx_prop_main_yield', '수익률'),
+        Index('idx_prop_main_price', '매매가'),
+    )
+
 class PropMemo(db.Model):
     __tablename__ = 'prop_memos'
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -84,7 +92,7 @@ class PropMemo(db.Model):
 
 class PropDetails(db.Model):
     __tablename__ = 'prop_details'
-    __table_args__ = (db.UniqueConstraint('고유번호', '층', name='uix_prop_addr_floor'),)
+    
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     pnu = db.Column(db.Text, name="고유번호")
     floor = db.Column(db.Text, name="층")
@@ -94,8 +102,13 @@ class PropDetails(db.Model):
     rent = db.Column(db.Integer, name="임대료")
     management = db.Column(db.Integer, name="월관리비")
     lease_range = db.Column(db.Text, name="임대차기간")
-    isEmpty = db.Column(db.Boolean, name="공실유무")
+    isEmpty = db.Column(db.Text, name="공실유무")
     created_at = db.Column(db.DateTime, name="생성일", default=db.func.now())
+
+    __table_args__ = (
+        db.UniqueConstraint('고유번호', '층', name='uix_prop_addr_floor'), # 기존 유지
+        Index('idx_prop_details_pnu', '고유번호'), # 트리거 연산 속도 최적화
+    )
 
 class SeoulLandInfo(db.Model):
     __tablename__ = 'seoul_land_info'
@@ -234,6 +247,105 @@ def setup_db_triggers(engine):
             FOR EACH ROW EXECUTE FUNCTION fn_calculate_land_data();
             
         END IF;
+
+        ---------------------------------------------------------
+        -- 2. prop_details 변경 시 prop_main 통계 업데이트 함수
+        ---------------------------------------------------------
+        CREATE OR REPLACE FUNCTION fn_update_prop_main_stats()
+        RETURNS TRIGGER AS $trg$
+        DECLARE
+            v_pnu TEXT;
+            v_total_vacancy_status TEXT;
+            v_has_unknown BOOLEAN;
+            v_has_empty BOOLEAN;
+            v_total_area NUMERIC;
+            v_empty_area_sum NUMERIC;
+            v_full_rent_sum NUMERIC;
+            v_current_rent_sum NUMERIC;
+            v_rent_full_land NUMERIC;
+            v_rent_current_land NUMERIC;
+            v_final_rent_per_area NUMERIC;
+            v_full_sec_sum NUMERIC;
+            v_full_man_sum NUMERIC;
+        BEGIN
+            -- 1. PNU 값 결정 (INSERT, UPDATE, DELETE 대응)
+            IF (TG_OP = 'DELETE') THEN
+                v_pnu := OLD.고유번호;
+            ELSE
+                v_pnu := NEW.고유번호;
+            END IF;
+
+            -- 2. 종합 공실 상태 결정 (JS 우선순위: 모름 > 유 > 무)
+            SELECT 
+                EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '모름'),
+                EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '유')
+            INTO v_has_unknown, v_has_empty;
+
+            IF v_has_unknown THEN
+                v_total_vacancy_status := '모름';
+            ELSIF v_has_empty THEN
+                v_total_vacancy_status := '유';
+            ELSE
+                v_total_vacancy_status := '무';
+            END IF;
+
+            -- 3. 임대료 및 보증금/관리비 합계 계산 (단위: 원)
+            SELECT 
+                COALESCE(SUM(보증금), 0) * 10000,
+                COALESCE(SUM(임대료), 0) * 10000,
+                COALESCE(SUM(월관리비), 0) * 10000,
+                -- JS 로직: isEmpty가 "무"가 아닌 것들의 합산 (currentSum)
+                COALESCE(SUM(CASE WHEN 공실유무 != '무' THEN 임대료 ELSE 0 END), 0) * 10000,
+                COALESCE(SUM(CASE WHEN 공실유무 != '무' THEN 평수 ELSE 0 END), 0)
+            INTO v_full_sec_sum, v_full_rent_sum, v_full_man_sum, v_current_rent_sum, v_empty_area_sum
+            FROM prop_details 
+            WHERE 고유번호 = v_pnu;
+
+            -- 4. 연면적 정보 조회
+            SELECT 연면적 INTO v_total_area FROM seoul_land_info WHERE 고유번호 = v_pnu;
+
+            -- 5. 연면적당 임대료(평단가) 계산 로직 (JS 수식 이식)
+            IF v_total_area IS NOT NULL AND v_total_area > 0 THEN
+                -- 전체 기준 평당 임대료
+                v_rent_full_land := (v_full_rent_sum / v_total_area) * 0.3025;
+                
+                -- 현재 기준(공실제외 면적) 평당 임대료
+                IF (v_total_area * 0.3025 - v_empty_area_sum) > 0 THEN
+                    v_rent_current_land := v_current_rent_sum / (v_total_area * 0.3025 - v_empty_area_sum);
+                ELSE
+                    v_rent_current_land := 0;
+                END IF;
+
+                -- 최종 결정
+                IF v_total_vacancy_status = '유' THEN
+                    v_final_rent_per_area := v_rent_current_land;
+                ELSE
+                    v_final_rent_per_area := v_rent_full_land;
+                END IF;
+            ELSE
+                v_final_rent_per_area := 0;
+            END IF;
+
+            -- 6. prop_main 테이블 업데이트
+            UPDATE prop_main 
+            SET 
+                공실유무총괄 = v_total_vacancy_status,
+                연면적당임대료 = ROUND(v_final_rent_per_area::numeric, 0),
+                총보증금 = v_full_sec_sum,
+                총월세부가세별도 = v_full_rent_sum,
+                총관리비 = v_full_man_sum
+            WHERE 고유번호 = v_pnu;
+
+            RETURN NULL;
+        END;
+        $trg$ LANGUAGE plpgsql;
+
+        -- 7. prop_details 트리거 부착
+        DROP TRIGGER IF EXISTS trg_update_prop_stats ON prop_details;
+        CREATE TRIGGER trg_update_prop_stats
+        AFTER INSERT OR UPDATE OR DELETE ON prop_details
+        FOR EACH ROW EXECUTE FUNCTION fn_update_prop_main_stats();
+
     END $$;
     """
     try:
