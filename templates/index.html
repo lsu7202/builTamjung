@@ -437,10 +437,7 @@
                 <div class="p-4 border-b bg-gray-50 sticky top-0 z-30 flex justify-between items-center">
                     <h3 class="font-bold text-sm text-gray-800"><i class="fa-solid fa-filter text-blue-600 mr-1"></i>
                     </h3>
-                    <button id="btnSaveData" disabled onclick="event.stopPropagation()"
-                        class="bg-blue-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-blue-700 disabled:bg-gray-400 transition-all">
-                        <i class="fa-solid fa-floppy-disk"></i> 데이터 저장
-                    </button>
+                    
                 </div>
 
 
@@ -580,8 +577,8 @@
                         <div class="filter-row">
                             <label class="filter-label">매매가</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="매매가"><span>~</span><input
-                                    type="number" class="range-input" data-col="매매가">
+                                <input type="text" class="range-input" data-col="매매가" data-unit="eok" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="매매가" data-unit="eok" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
@@ -617,29 +614,29 @@
                         <div class="filter-row">
                             <label class="filter-label">총보증금</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="총보증금"><span>~</span><input
-                                    type="number" class="range-input" data-col="총보증금">
+                                <input type="text" class="range-input" data-col="총보증금" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="총보증금" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">총임대료</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="총임대료"><span>~</span><input
-                                    type="number" class="range-input" data-col="총임대료">
+                                <input type="text" class="range-input" data-col="총임대료" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="총임대료" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">총관리비</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="총관리비"><span>~</span><input
-                                    type="number" class="range-input" data-col="총관리비">
+                                <input type="text" class="range-input" data-col="총관리비" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="총관리비" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">연면적당임대료</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="연면적당임대료"><span>~</span><input
-                                    type="number" class="range-input" data-col="연면적당임대료">
+                                <input type="text" class="range-input" data-col="연면적당임대료" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="연면적당임대료" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
@@ -652,15 +649,15 @@
                         <div class="filter-row">
                             <label class="filter-label">평단가(대지면적)</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="대지면적평단가"><span>~</span><input
-                                    type="number" class="range-input" data-col="대지면적평단가">
+                                <input type="text" class="range-input" data-col="대지면적평단가" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="대지면적평단가" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">평단가(연면적)</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="연면적평단가"><span>~</span><input
-                                    type="number" class="range-input" data-col="연면적평단가">
+                                <input type="text" class="range-input" data-col="연면적평단가" data-unit="man" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="연면적평단가" data-unit="man" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
@@ -779,29 +776,29 @@
                         <div class="filter-row">
                             <label class="filter-label">대지면적</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="대지면적"><span>~</span><input
-                                    type="number" class="range-input" data-col="대지면적">
+                                <input type="text" class="range-input" data-col="대지면적" data-unit="area" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="대지면적" data-unit="area" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">연면적</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="연면적"><span>~</span><input
-                                    type="number" class="range-input" data-col="연면적">
+                                <input type="text" class="range-input" data-col="연면적" data-unit="area" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="연면적" data-unit="area" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">건축면적</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="건축면적"><span>~</span><input
-                                    type="number" class="range-input" data-col="건축면적">
+                                <input type="text" class="range-input" data-col="건축면적" data-unit="area" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="건축면적" data-unit="area" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">용적률산정용연면적</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="용적률산정연면적"><span>~</span><input
-                                    type="number" class="range-input" data-col="용적률산정연면적">
+                                <input type="text" class="range-input" data-col="용적률산정연면적" data-unit="area" onblur="syncSidebarFilter(this)"><span>~</span><input
+                                    type="text" class="range-input" data-col="용적률산정연면적" data-unit="area" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                     </section>
@@ -906,50 +903,50 @@
                         <div class="filter-row">
                             <label class="filter-label">토지면적</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="토지면적"><span>~</span>
-                                <input type="number" class="range-input" data-col="토지면적">
+                                <input type="text" class="range-input" data-col="토지면적" data-unit="area" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="토지면적" data-unit="area" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가">
+                                <input type="text" class="range-input" data-col="공시지가" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가5년전</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가5년전"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가5년전">
+                                <input type="text" class="range-input" data-col="공시지가5년전" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가5년전" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가10년전</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가10년전"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가10년전">
+                                <input type="text" class="range-input" data-col="공시지가10년전" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가10년전" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가상승률5년전</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가상승률5년전"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가상승률5년전">
+                                <input type="text" class="range-input" data-col="공시지가상승률5년전" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가상승률5년전" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가상승률10년전</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가상승률10년전"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가상승률10년전">
+                                <input type="text" class="range-input" data-col="공시지가상승률10년전" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가상승률10년전" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                         <div class="filter-row">
                             <label class="filter-label">공시지가합계</label>
                             <div class="range-wrapper">
-                                <input type="number" class="range-input" data-col="공시지가합계"><span>~</span>
-                                <input type="number" class="range-input" data-col="공시지가합계">
+                                <input type="text" class="range-input" data-col="공시지가합계" data-unit="won" onblur="syncSidebarFilter(this)"><span>~</span>
+                                <input type="text" class="range-input" data-col="공시지가합계" data-unit="won" onblur="syncSidebarFilter(this)">
                             </div>
                         </div>
                     </section>
@@ -985,13 +982,13 @@
                         <div class="text-[10px] font-bold text-blue-500 mb-2 border-b pb-1"></div>
                         <label class="filter-label">네이버광고</label>
                         <div class="range-wrapper">
-                            <input type="number" class="range-input" data-col="네이버광고"><span>~</span>
-                            <input type="number" class="range-input" data-col="네이버광고">
+                            <input type="text" class="range-input" data-col="네이버광고" data-unit="eok" onblur="syncSidebarFilter(this)"><span>~</span>
+                            <input type="text" class="range-input" data-col="네이버광고" data-unit="eok" onblur="syncSidebarFilter(this)">
                         </div>
                         <label class="filter-label">네이버광고과거</label>
                         <div class="range-wrapper">
-                            <input type="number" class="range-input" data-col="네이버광고과거"><span>~</span>
-                            <input type="number" class="range-input" data-col="네이버광고과거">
+                            <input type="text" class="range-input" data-col="네이버광고과거" data-unit="eok" onblur="syncSidebarFilter(this)"><span>~</span>
+                            <input type="text" class="range-input" data-col="네이버광고과거" data-unit="eok" onblur="syncSidebarFilter(this)">
                         </div>
                         <label class="filter-label">네이버광고상승률</label>
                         <div class="range-wrapper">
@@ -1592,17 +1589,17 @@
                                 <div class="grid grid-cols-2 gap-2">
                                     <input type="text" id="reg-sale-date1" data-unit="text" oninput="formatDate(this)"
                                         onblur="Val.sync(this)" placeholder="매각일1" class="border rounded p-1.5 text-xs">
-                                    <input type="text" id="reg-sale-amt1" data-unit="won"
+                                    <input type="text" id="reg-sale-amt1" data-unit="eok"
                                         onblur="Val.sync(this); calculatePropertyStats();"
                                         class="border rounded p-1.5 text-xs">
                                     <input type="text" id="reg-sale-date2" data-unit="text" oninput="formatDate(this)"
                                         onblur="Val.sync(this)" placeholder="매각일2" class="border rounded p-1.5 text-xs">
-                                    <input type="text" id="reg-sale-amt2" data-unit="won"
+                                    <input type="text" id="reg-sale-amt2" data-unit="eok"
                                         onblur="Val.sync(this); calculatePropertyStats();"
                                         class="border rounded p-1.5 text-xs">
                                     <input type="text" id="reg-sale-date3" data-unit="text" oninput="formatDate(this)"
                                         onblur="Val.sync(this)" placeholder="매각일3" class="border rounded p-1.5 text-xs">
-                                    <input type="text" id="reg-sale-amt3" data-unit="won"
+                                    <input type="text" id="reg-sale-amt3" data-unit="eok"
                                         onblur="Val.sync(this); calculatePropertyStats();"
                                         class="border rounded p-1.5 text-xs">
                                     <div class="col-span-2"><label
@@ -1796,6 +1793,13 @@
                 // 버튼 텍스트 변경
                 const unitText = document.getElementById('unitText');
                 unitText.innerText = isPyungMode ? "평" : "㎡";
+
+                // 사이드바의 면적 관련 필터들 포맷팅 갱신
+                document.querySelectorAll('.range-input[data-unit="area"]').forEach(inp => {
+                    if (inp.dataset.raw) {
+                        setSidebarDisplay(inp);
+                    }
+                });
 
                 // 테이블 다시 그리기 (렌더러가 호출됨)
                 if (hot) {
@@ -2082,12 +2086,12 @@
             });
 
             const ranges = {};
-            const areaCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적'];
+            const areaCols = ['토지면적', '대지면적', '연면적', '건축면적', '용적률산정용연면적'];
 
             // range-input 클래스를 가진 모든 입력 필드 순회
             document.querySelectorAll('.range-input').forEach(inp => {
                 const col = inp.dataset.col; // HTML의 data-col 값 (예: '매각일', '매매가' 등)
-                const val = inp.value.trim();
+                const val = inp.dataset.raw || inp.value.trim();
 
                 if (val) {
                     if (!ranges[col]) ranges[col] = {};
@@ -2166,7 +2170,6 @@
                 }
 
                 renderTable(data);
-                document.getElementById('btnSaveData').disabled = (data.length === 0);
                 updatePaginationUI();
             } catch (e) { console.error(e); } finally { els.spinner.classList.add('hidden'); }
         }
@@ -2218,7 +2221,7 @@
             row['공시지가상승률10년전'] = (has(current) && has(old10) && old10 != 0) ? Number(((current - old10) / old10 * 100).toFixed(2)) : null;
 
             // 2. 총공시지가와 매매가 비율
-            row['총공시지가와매매가비율'] = (has(price) && has(base) && base > 0) ? Number(((price / base) * 100).toFixed(2)) : null;
+            row['총공시지가와매매가비율'] = (has(price) && has(base) && base > 0) ? Number(((base - price) / price * 100).toFixed(2)) : null;
 
             // 3. 건폐율 및 용적률 차이
             row['건폐율법정건폐율'] = (has(bc) && has(bcLegal)) ? Number((bc - bcLegal).toFixed(2)) : null;
@@ -2354,9 +2357,9 @@
 
             // 포맷팅 그룹
             const moneyCols = [];
-            const moneyCols_man = ['총관리비', '총월세(부가세 별도)', '총보증금', '연면적당임대료'];
+            const moneyCols_man = ['총관리비', '총월세(부가세 별도)', '총보증금', '연면적당임대료', '평단가(연면적)', '평단가(대지면적)'];
             const moneyCols_million = ['매매가(억)', 'AI추정가', '네이버광고', '네이버광고과거', '매각액1', '매각액2', '매각액3', '공시지가 기준']
-            const decimalCols = ['대지면적', '연면적', '건축면적', '용적률산정용연면적'];
+            const decimalCols = ['토지면적', '대지면적', '연면적', '건축면적', '용적률산정용연면적'];
             const gongsiCols = ['공시지가(현재)', '공시지가(5년전)', '공시지가(10년전)'];
 
             // 백분율 그룹
@@ -2431,7 +2434,7 @@
                         const numValue = parseFloat(value);
                         if (!isNaN(numValue)) {
                             // 100,000,000으로 나누어 '억' 단위 계산 후 소수점 2자리 고정
-                            const eokValue = Math.round(numValue / 10000);
+                            const eokValue = (numValue / 10000).toFixed(2);
                             td.innerText = eokValue.toLocaleString() + " 만원";
                         }
                     }
@@ -2640,15 +2643,7 @@
             }
         }
 
-        document.getElementById('btnSaveData').addEventListener('click', async () => {
-            try {
-                // hot.getSourceData()는 DB컬럼명을 Key로 가진 객체 배열을 반환함 (config.data가 DB컬럼명이므로)
-                // 별도 변환 없이 그대로 전송하면 됨.
-                console.log(JSON.stringify(hot.getSourceData()))
-                await fetch('/api/update_data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(hot.getSourceData()) });
-                alert("저장되었습니다.");
-            } catch { alert("저장 실패"); }
-        });
+        
 
         function setupGroupDropdown() {
             const input = els.groupNameInput;

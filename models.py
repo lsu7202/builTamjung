@@ -78,6 +78,9 @@ class PropMain(db.Model):
         Index('idx_prop_main_pnu', '고유번호'),
         Index('idx_prop_main_yield', '수익률'),
         Index('idx_prop_main_price', '매매가'),
+        Index('idx_trgm_manager', '담당자', 
+              postgresql_using='gist', 
+              postgresql_ops={'담당자': 'gist_trgm_ops'}),
     )
 
 class PropMemo(db.Model):
@@ -177,6 +180,12 @@ class SeoulLandInfo(db.Model):
     __table_args__ = (
         Index('idx_seoul_land_info_pnu', '고유번호'),
         Index('idx_seoul_land_info_geom', 'geom', postgresql_using='gist'),
+        Index('idx_trgm_address', '주소', 
+              postgresql_using='gist', 
+              postgresql_ops={'주소': 'gist_trgm_ops'}),
+        Index('idx_trgm_owner_current', '소유자현재', 
+              postgresql_using='gist', 
+              postgresql_ops={'소유자현재': 'gist_trgm_ops'}),
     )
 
 # --------------------------------------------------------------------------
@@ -188,6 +197,7 @@ def setup_db_triggers(engine):
     DB 트리거를 생성합니다. 
     마이그레이션 전/후 언제 호출되어도 에러가 나지 않도록 테이블 존재 여부를 체크합니다.
     """
+    extension_sql = "CREATE EXTENSION IF NOT EXISTS pg_trgm;"
     trigger_sql = """
     DO $$ 
     BEGIN
@@ -229,11 +239,16 @@ def setup_db_triggers(engine):
                 IF NEW.매각액1 IS NOT NULL AND NEW.매각액2 IS NOT NULL AND NEW.매각액2 > 0 THEN
                     NEW.매각손익률 := ((NEW.매각액1 - NEW.매각액2) / NEW.매각액2) * 100;
                 END IF;
+                
+                
 
                 -- 총공시지가와매매가비율 (매매가 억 단위를 원 단위로 변환 보정)
                 SELECT 매매가 INTO v_sale_price FROM prop_main WHERE 고유번호 = NEW.고유번호 LIMIT 1;
                 IF v_sale_price IS NOT NULL AND NEW.공시지가기준 IS NOT NULL AND NEW.공시지가기준 > 0 THEN
-                    NEW.총공시지가와매매가비율 := (v_sale_price * 100000000) / NEW.공시지가기준;
+                    NEW.총공시지가와매매가비율 := (NEW.공시지가기준 - v_sale_price) / v_sale_price * 100;
+                END IF;
+                IF NEW."AI추정가" IS NOT NULL AND v_sale_price IS NOT NULL AND v_sale_price > 0 THEN
+                    NEW."AI추정가매매가비율" := (NEW."AI추정가"::numeric - v_sale_price) / v_sale_price * 100;
                 END IF;
 
                 RETURN NEW;
@@ -254,102 +269,110 @@ def setup_db_triggers(engine):
         CREATE OR REPLACE FUNCTION fn_update_prop_main_stats()
         RETURNS TRIGGER AS $trg$
         DECLARE
-            v_pnu TEXT;
-            v_total_vacancy_status TEXT;
-            v_has_unknown BOOLEAN;
-            v_has_empty BOOLEAN;
-            v_total_area NUMERIC;
-            v_empty_area_sum NUMERIC;
-            v_full_rent_sum NUMERIC;
-            v_current_rent_sum NUMERIC;
-            v_rent_full_land NUMERIC;
-            v_rent_current_land NUMERIC;
-            v_final_rent_per_area NUMERIC;
-            v_full_sec_sum NUMERIC;
-            v_full_man_sum NUMERIC;
+            v_pnu TEXT; v_total_vacancy_status TEXT; v_has_unknown BOOLEAN; v_has_empty BOOLEAN;
+            v_total_area NUMERIC; v_build_land_area NUMERIC; v_empty_area_sum NUMERIC;
+            v_full_rent_sum NUMERIC; v_full_sec_sum NUMERIC; v_full_man_sum NUMERIC;
+            v_occ_rent_sum NUMERIC; v_occ_sec_sum NUMERIC;
+            v_sale_price NUMERIC; v_yield_rate NUMERIC; v_except_empty_yield NUMERIC;
+            v_p_land NUMERIC; v_p_floor NUMERIC; v_final_rent_per_area NUMERIC;
         BEGIN
-            -- 1. PNU 값 결정 (INSERT, UPDATE, DELETE 대응)
-            IF (TG_OP = 'DELETE') THEN
-                v_pnu := OLD.고유번호;
-            ELSE
-                v_pnu := NEW.고유번호;
-            END IF;
+            v_pnu := CASE WHEN (TG_OP = 'DELETE') THEN OLD.고유번호 ELSE NEW.고유번호 END;
 
-            -- 2. 종합 공실 상태 결정 (JS 우선순위: 모름 > 유 > 무)
-            SELECT 
-                EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '모름'),
-                EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '유')
+            SELECT EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '모름'),
+                   EXISTS (SELECT 1 FROM prop_details WHERE 고유번호 = v_pnu AND 공실유무 = '유')
             INTO v_has_unknown, v_has_empty;
 
-            IF v_has_unknown THEN
-                v_total_vacancy_status := '모름';
-            ELSIF v_has_empty THEN
-                v_total_vacancy_status := '유';
-            ELSE
-                v_total_vacancy_status := '무';
+            IF v_has_unknown THEN v_total_vacancy_status := '모름';
+            ELSIF v_has_empty THEN v_total_vacancy_status := '유';
+            ELSE v_total_vacancy_status := '무';
             END IF;
 
-            -- 3. 임대료 및 보증금/관리비 합계 계산 (단위: 원)
-            SELECT 
-                COALESCE(SUM(보증금), 0) * 10000,
-                COALESCE(SUM(임대료), 0) * 10000,
-                COALESCE(SUM(월관리비), 0) * 10000,
-                -- JS 로직: isEmpty가 "무"가 아닌 것들의 합산 (currentSum)
-                COALESCE(SUM(CASE WHEN 공실유무 != '무' THEN 임대료 ELSE 0 END), 0) * 10000,
-                COALESCE(SUM(CASE WHEN 공실유무 != '무' THEN 평수 ELSE 0 END), 0)
-            INTO v_full_sec_sum, v_full_rent_sum, v_full_man_sum, v_current_rent_sum, v_empty_area_sum
-            FROM prop_details 
-            WHERE 고유번호 = v_pnu;
+            SELECT COALESCE(SUM(보증금), 0), COALESCE(SUM(임대료), 0), COALESCE(SUM(월관리비), 0),
+                   COALESCE(SUM(CASE WHEN 공실유무 != '유' THEN 임대료 ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN 공실유무 != '유' THEN 보증금 ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN 공실유무 = '유' THEN 평수 ELSE 0 END), 0)
+            INTO v_full_sec_sum, v_full_rent_sum, v_full_man_sum, v_occ_rent_sum, v_occ_sec_sum, v_empty_area_sum
+            FROM prop_details WHERE 고유번호 = v_pnu;
 
-            -- 4. 연면적 정보 조회
-            SELECT 연면적 INTO v_total_area FROM seoul_land_info WHERE 고유번호 = v_pnu;
+            SELECT 연면적, 대지면적 INTO v_total_area, v_build_land_area FROM seoul_land_info WHERE 고유번호 = v_pnu;
+            SELECT 매매가 INTO v_sale_price FROM prop_main WHERE 고유번호 = v_pnu;
 
-            -- 5. 연면적당 임대료(평단가) 계산 로직 (JS 수식 이식)
+            IF v_sale_price IS NOT NULL AND v_sale_price > 0 THEN
+                IF (v_sale_price - v_full_sec_sum) > 0 THEN v_yield_rate := (v_full_rent_sum * 12) / (v_sale_price - v_full_sec_sum) * 100; END IF;
+                IF (v_sale_price - v_occ_sec_sum) > 0 THEN v_except_empty_yield := (v_occ_rent_sum * 12) / (v_sale_price - v_occ_sec_sum) * 100; END IF;
+                IF v_build_land_area > 0 THEN v_p_land := v_sale_price / (v_build_land_area * 0.3025); END IF;
+                IF v_total_area > 0 THEN v_p_floor := v_sale_price / (v_total_area * 0.3025); END IF;
+            END IF;
+
             IF v_total_area IS NOT NULL AND v_total_area > 0 THEN
-                -- 전체 기준 평당 임대료
-                v_rent_full_land := (v_full_rent_sum / v_total_area) * 0.3025;
-                
-                -- 현재 기준(공실제외 면적) 평당 임대료
-                IF (v_total_area * 0.3025 - v_empty_area_sum) > 0 THEN
-                    v_rent_current_land := v_current_rent_sum / (v_total_area * 0.3025 - v_empty_area_sum);
-                ELSE
-                    v_rent_current_land := 0;
-                END IF;
-
-                -- 최종 결정
-                IF v_total_vacancy_status = '유' THEN
-                    v_final_rent_per_area := v_rent_current_land;
-                ELSE
-                    v_final_rent_per_area := v_rent_full_land;
-                END IF;
-            ELSE
-                v_final_rent_per_area := 0;
+                IF v_total_vacancy_status = '유' AND (v_total_area * 0.3025 - v_empty_area_sum) > 0 THEN
+                    v_final_rent_per_area := v_occ_rent_sum / (v_total_area * 0.3025 - v_empty_area_sum);
+                ELSE v_final_rent_per_area := (v_full_rent_sum / (v_total_area * 0.3025)); END IF;
             END IF;
 
-            -- 6. prop_main 테이블 업데이트
-            UPDATE prop_main 
-            SET 
-                공실유무총괄 = v_total_vacancy_status,
-                연면적당임대료 = ROUND(v_final_rent_per_area::numeric, 0),
-                총보증금 = v_full_sec_sum,
-                총월세부가세별도 = v_full_rent_sum,
-                총관리비 = v_full_man_sum
+            UPDATE prop_main SET 
+                공실유무총괄 = v_total_vacancy_status, 연면적당임대료 = ROUND(COALESCE(v_final_rent_per_area,0)::numeric, 0),
+                총보증금 = v_full_sec_sum, 총월세부가세별도 = v_full_rent_sum, 총관리비 = v_full_man_sum,
+                수익률 = ROUND(COALESCE(v_yield_rate,0)::numeric, 2), 공실제외수익률 = ROUND(COALESCE(v_except_empty_yield,0)::numeric, 2),
+                대지면적평단가 = ROUND(COALESCE(v_p_land,0)::numeric, 0), 연면적평단가 = ROUND(COALESCE(v_p_floor,0)::numeric, 0)
             WHERE 고유번호 = v_pnu;
-
             RETURN NULL;
         END;
         $trg$ LANGUAGE plpgsql;
 
-        -- 7. prop_details 트리거 부착
         DROP TRIGGER IF EXISTS trg_update_prop_stats ON prop_details;
-        CREATE TRIGGER trg_update_prop_stats
-        AFTER INSERT OR UPDATE OR DELETE ON prop_details
-        FOR EACH ROW EXECUTE FUNCTION fn_update_prop_main_stats();
+        CREATE TRIGGER trg_update_prop_stats AFTER INSERT OR UPDATE OR DELETE ON prop_details FOR EACH ROW EXECUTE FUNCTION fn_update_prop_main_stats();
 
+        ---------------------------------------------------------
+        -- 3. [추가] prop_main 매매가 수정 시 통계 자동 재계산
+        ---------------------------------------------------------
+        CREATE OR REPLACE FUNCTION fn_calculate_main_on_price_change()
+        RETURNS TRIGGER AS $trg$
+        DECLARE
+            v_total_area NUMERIC; v_build_land_area NUMERIC;
+            v_occ_rent_sum NUMERIC; v_occ_sec_sum NUMERIC;
+        BEGIN
+            -- 면적 정보 조회
+            SELECT 연면적, 대지면적 INTO v_total_area, v_build_land_area FROM seoul_land_info WHERE 고유번호 = NEW.고유번호;
+            
+            -- 현재 점유 중인 층의 합계 조회
+            SELECT COALESCE(SUM(CASE WHEN 공실유무 != '유' THEN 임대료 ELSE 0 END), 0),
+                   COALESCE(SUM(CASE WHEN 공실유무 != '유' THEN 보증금 ELSE 0 END), 0)
+            INTO v_occ_rent_sum, v_occ_sec_sum FROM prop_details WHERE 고유번호 = NEW.고유번호;
+
+            IF NEW.매매가 IS NOT NULL AND NEW.매매가 > 0 THEN
+                -- 전체 수익률
+                IF (NEW.매매가 - NEW.총보증금) > 0 THEN 
+                    NEW.수익률 := (NEW.총월세부가세별도 * 12) / (NEW.매매가 - NEW.총보증금) * 100; 
+                END IF;
+                -- 공실제외 수익률
+                IF (NEW.매매가 - v_occ_sec_sum) > 0 THEN 
+                    NEW.공실제외수익률 := (v_occ_rent_sum * 12) / (NEW.매매가 - v_occ_sec_sum) * 100; 
+                END IF;
+                -- 평단가 계산
+                IF v_build_land_area > 0 THEN NEW.대지면적평단가 := NEW.매매가 / (v_build_land_area * 0.3025); END IF;
+                IF v_total_area > 0 THEN NEW.연면적평단가 := NEW.매매가 / (v_total_area * 0.3025); END IF;
+            END IF;
+
+            -- 수치 반올림 처리
+            NEW.수익률 := ROUND(COALESCE(NEW.수익률, 0)::numeric, 2);
+            NEW.공실제외수익률 := ROUND(COALESCE(NEW.공실제외수익률, 0)::numeric, 2);
+            NEW.대지면적평단가 := ROUND(COALESCE(NEW.대지면적평단가, 0)::numeric, 0);
+            NEW.연면적평단가 := ROUND(COALESCE(NEW.연면적평단가, 0)::numeric, 0);
+
+            RETURN NEW;
+        END;
+        $trg$ LANGUAGE plpgsql;
+
+        DROP TRIGGER IF EXISTS trg_main_price_calc ON prop_main;
+        CREATE TRIGGER trg_main_price_calc
+        BEFORE UPDATE OF 매매가 ON prop_main
+        FOR EACH ROW EXECUTE FUNCTION fn_calculate_main_on_price_change();
     END $$;
     """
     try:
         with engine.connect() as conn:
+            conn.execute(text(extension_sql))
             conn.execute(text(trigger_sql))
             conn.commit()
     except Exception as e:

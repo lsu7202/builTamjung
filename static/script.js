@@ -651,5 +651,76 @@ async function loadSessionInfo() {
 }
 
 
+/**
+ * 사이드바 필터 전용 단위 동기화 함수
+ */
+function syncSidebarFilter(el) {
+    const unit = el.dataset.unit || 'won';
+    let val = el.value.replace(/[^0-9.-]/g, '');
+    
+    if (val === "" || isNaN(val)) { 
+        el.dataset.raw = ""; 
+        el.value = ""; 
+        return; 
+    }
+
+    const numVal = parseFloat(val);
+    const PYUNG_FACTOR = 0.3025;
+
+    // 1. Raw 데이터 저장 (내부 데이터는 항상 원/㎡ 기준)
+    if (unit === 'eok') {
+        el.dataset.raw = numVal * 100000000;
+    } else if (unit === 'man') {
+        el.dataset.raw = numVal * 10000;
+    } else if (unit === 'area') {
+        // 화면이 '평' 모드일 때 입력했다면 ㎡로 환산해서 저장
+        el.dataset.raw = isPyungMode ? (numVal / PYUNG_FACTOR) : numVal;
+    } else {
+        el.dataset.raw = numVal;
+    }
+
+    // 2. 화면 표시용 포맷팅 (setSidebarDisplay 호출)
+    setSidebarDisplay(el);
+}
+
+/**
+ * 사이드바 엘리먼트의 포맷팅만 담당하는 함수
+ */
+function setSidebarDisplay(el) {
+    const raw = parseFloat(el.dataset.raw);
+    if (isNaN(raw)) return;
+
+    const unit = el.dataset.unit;
+    const PYUNG_FACTOR = 0.3025;
+    let displayValue = "";
+
+    if (unit === 'eok') {
+        displayValue = (raw / 100000000).toLocaleString(undefined, {
+            minimumFractionDigits: 2, maximumFractionDigits: 2
+        }) + " 억";
+    } else if (unit === 'man') {
+        displayValue = Math.round(raw / 10000).toLocaleString() + " 만원";
+    } else if (unit === 'area') {
+        if (isPyungMode) {
+            displayValue = (raw * PYUNG_FACTOR).toFixed(2) + " 평";
+        } else {
+            displayValue = raw.toLocaleString() + " ㎡";
+        }
+    } else {
+        displayValue = raw.toLocaleString();
+    }
+
+    el.value = displayValue;
+}
+const addressInput = document.getElementById('reg-address-input');
+
+addressInput.addEventListener('keydown', function(event) {
+  if (event.key === 'Enter') {
+    event.preventDefault(); // 기본 폼 제출 동작 방지 (필요한 경우)
+    fillPropertyDataHandler();
+  }
+});
+
+
 
 

@@ -58,7 +58,7 @@ const Val = {
             }) + " 억";
         } else if (unit === 'man') {
             // 만 단위: 반올림
-            const unitVal = Math.round(rawValue / this.units.man);
+            const unitVal = (rawValue / this.units.man).toFixed(2);
             displayValue = unitVal.toLocaleString() + " 만원";
         } else if (unit === 'won') {
             // 원 단위: 반올림
@@ -152,100 +152,155 @@ async function searchPropertyDetailData(pnu) {
     } catch (e) { alert("서버 통신 에러"); }
 }
 
+/**
+ * 정보 불러오기 클릭 시 로딩 애니메이션 표시
+ */
 async function fillPropertyDataHandler() {
-    const rs = await searchPropertyData();
-    console.log(rs)
-    if (!rs) return;
-    const { main } = rs;
-    const session = await loadSessionInfo();
+    // ✅ 1. 로딩 애니메이션 표시
+    showLoadingOverlay();
 
-    PNU = main.pnu_key;
-    const drs = await searchPropertyDetailData(PNU);
-    console.log(drs)
-    const { details, prop } = drs;
+    try {
+        const rs = await searchPropertyData();
+        console.log(rs)
+        if (!rs) {
+            hideLoadingOverlay();
+            return;
+        }
+        const { main } = rs;
+        const session = await loadSessionInfo();
 
-    if (PNU) document.getElementById('btn-submit-property').disabled = false;
+        PNU = main.pnu_key;
+        const drs = await searchPropertyDetailData(PNU);
+        console.log(drs)
+        const { details, prop } = drs;
 
-    // [1] 세부 정보 및 담당자 (Val.set 통일)
-    Val.set('reg-manager', prop.담당자 || session.user_name || "");
-    Val.set('reg-owner-type', prop.소유자타입 || "개인");
-    Val.set('reg-owner-name', prop.소유자명 || "");
-    Val.set('reg-contact', prop.전화번호 || "");
-    Val.set('reg-relationship', prop.관계 || "건물주/법인대표");
-    Val.set('reg-inclination', prop.성향 || "");
-    Val.set('reg-proped-date', prop.접수일 || new Intl.DateTimeFormat('fr-CA').format(new Date()));
-    Val.set('reg-intent-to-buy', prop.매수의향서 || "");
-    Val.set('reg-video-timestamp', prop.영상번호분초 || "");
-    Val.set('reg-owner-details', main.소유자현재 || "");
+        if (PNU) document.getElementById('btn-submit-property').disabled = false;
 
-    // [2] 메인 정보
-    Val.set('reg-sale-price', prop.매매가 || 0);
-    Val.set('reg-total-security', prop.총보증금 || 0);
-    Val.set('reg-total-rent', prop.총월세부가세별도 || 0);
-    Val.set('reg-total-manage', prop.총관리비 || 0);
-    Val.set('reg-prop-id', prop.매물번호 || "");
-    Val.set('reg-invest-cash', prop.자기자본 || "");
-    Val.set('reg-loan-rate', prop.이자율 || "");
+        // [1] 세부 정보 및 담당자 (Val.set 통일)
+        Val.set('reg-manager', prop.담당자 || session.user_name || "");
+        Val.set('reg-owner-type', prop.소유자타입 || "개인");
+        Val.set('reg-owner-name', prop.소유자명 || "");
+        Val.set('reg-contact', prop.전화번호 || "");
+        Val.set('reg-relationship', prop.관계 || "건물주/법인대표");
+        Val.set('reg-inclination', prop.성향 || "");
+        Val.set('reg-proped-date', prop.접수일 || new Intl.DateTimeFormat('fr-CA').format(new Date()));
+        Val.set('reg-intent-to-buy', prop.매수의향서 || "");
+        Val.set('reg-video-timestamp', prop.영상번호분초 || "");
+        Val.set('reg-owner-details', main.소유자현재 || "");
 
-    // [3] 진행 및 등급
-    Val.set('reg-status', prop.진행상태 || "준비");
-    Val.set('reg-urgency', prop.긴급도 || "없음");
-    Val.set('reg-location', prop.입지 || "");
-    Val.set('reg-grade', prop.등급 || "");
-    Val.set('reg-b-usage', prop.건물용도 || "");
-    Val.set('reg-has-photo', prop.사진 || "무");
-    Val.set('reg-has-brief', prop.브리핑 || "무");
-    Val.set('reg-eviction', prop.명도 || "확인중");
-    Val.set('reg-usage-change', prop.용도변경 || "확인중");
-    Val.set('reg-demolition', prop.멸실 || "확인중");
+        // [2] 메인 정보
+        Val.set('reg-sale-price', prop.매매가 || 0);
+        Val.set('reg-total-security', prop.총보증금 || 0);
+        Val.set('reg-total-rent', prop.총월세부가세별도 || 0);
+        Val.set('reg-total-manage', prop.총관리비 || 0);
+        Val.set('reg-prop-id', prop.매물번호 || "");
+        Val.set('reg-invest-cash', prop.자기자본 || "");
+        Val.set('reg-loan-rate', prop.이자율 || "");
 
-    // [4] 건물 정보
-    Val.set('reg-floor-above', main.규모지상 || "");
-    Val.set('reg-floor-below', main.규모지하 || "");
-    Val.set('reg-land-area', main.대지면적 || 0);
-    Val.set('reg-build-area', main.건축면적 || 0);
-    Val.set('reg-total-area-val', main.연면적 || 0);
-    Val.set('reg-far-area', main.용적률산정연면적 || 0);
-    Val.set('reg-elevator', main.엘리베이터 || 0);
-    Val.set('reg-parking', main.주차장 || 0);
-    Val.set('reg-approval-date', main.사용승인일 || "");
-    Val.set('reg-remodel-date', main.대수선및리모델링 || "");
-    Val.set('reg-legal-bc', main.법정건폐율 || 0);
-    Val.set('reg-legal-far', main.법정용적률 || 0);
+        // [3] 진행 및 등급
+        Val.set('reg-status', prop.진행상태 || "준비");
+        Val.set('reg-urgency', prop.긴급도 || "없음");
+        Val.set('reg-location', prop.입지 || "");
+        Val.set('reg-grade', prop.등급 || "");
+        Val.set('reg-b-usage', prop.건물용도 || "");
+        Val.set('reg-has-photo', prop.사진 || "무");
+        Val.set('reg-has-brief', prop.브리핑 || "무");
+        Val.set('reg-eviction', prop.명도 || "확인중");
+        Val.set('reg-usage-change', prop.용도변경 || "확인중");
+        Val.set('reg-demolition', prop.멸실 || "확인중");
 
-    // [5] 토지 정보
-    Val.set('reg-total-land-area', main.토지면적 || 0);
-    Val.set('reg-jimok', main.지목 || "");
-    Val.set('reg-zoning', main.용도지역 || "");
-    Val.set('reg-land-status', main.토지이용상황 || "");
-    Val.set('reg-main-code', main.주용도 || "");
-    Val.set('reg-shape', main.형상 || "");
-    Val.set('reg-road', main.도로 || "");
-    Val.set('reg-other-usage', main.기타용도 || "");
-    Val.set('reg-gongsi-cur', main.공시지가 || 0);
-    Val.set('reg-gongsi-5y', main.공시지가5년전 || 0);
-    Val.set('reg-gongsi-10y', main.공시지가10년전 || 0);
+        // [4] 건물 정보
+        Val.set('reg-floor-above', main.규모지상 || "");
+        Val.set('reg-floor-below', main.규모지하 || "");
+        Val.set('reg-land-area', main.대지면적 || 0);
+        Val.set('reg-build-area', main.건축면적 || 0);
+        Val.set('reg-total-area-val', main.연면적 || 0);
+        Val.set('reg-far-area', main.용적률산정연면적 || 0);
+        Val.set('reg-elevator', main.엘리베이터 || 0);
+        Val.set('reg-parking', main.주차장 || 0);
+        Val.set('reg-approval-date', main.사용승인일 || "");
+        Val.set('reg-remodel-date', main.대수선및리모델링 || "");
+        Val.set('reg-legal-bc', main.법정건폐율 || 0);
+        Val.set('reg-legal-far', main.법정용적률 || 0);
 
+        // [5] 토지 정보
+        Val.set('reg-total-land-area', main.토지면적 || 0);
+        Val.set('reg-jimok', main.지목 || "");
+        Val.set('reg-zoning', main.용도지역 || "");
+        Val.set('reg-land-status', main.토지이용상황 || "");
+        Val.set('reg-main-code', main.주용도 || "");
+        Val.set('reg-shape', main.형상 || "");
+        Val.set('reg-road', main.도로 || "");
+        Val.set('reg-other-usage', main.기타용도 || "");
+        Val.set('reg-gongsi-cur', main.공시지가 || 0);
+        Val.set('reg-gongsi-5y', main.공시지가5년전 || 0);
+        Val.set('reg-gongsi-10y', main.공시지가10년전 || 0);
 
-    // [6] 매각 및 광고
-    Val.set('reg-sale-date1', main.매각일1 || ""); Val.set('reg-sale-amt1', main.매각액1 || 0);
-    Val.set('reg-sale-date2', main.매각일2 || ""); Val.set('reg-sale-amt2', main.매각액2 || 0);
-    Val.set('reg-sale-date3', main.매각일3 || ""); Val.set('reg-sale-amt3', main.매각액3 || 0);
-    Val.set('reg-sale-profit', main.매각손익률 || "");
-    Val.set('reg-naver-cur', main.네이버광고 || 0); Val.set('reg-naver-past', main.네이버광고과거 || 0);
-    Val.set()
-    Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "무");
+        // [6] 매각 및 광고
+        Val.set('reg-sale-date1', main.매각일1 || ""); Val.set('reg-sale-amt1', main.매각액1 || 0);
+        Val.set('reg-sale-date2', main.매각일2 || ""); Val.set('reg-sale-amt2', main.매각액2 || 0);
+        Val.set('reg-sale-date3', main.매각일3 || ""); Val.set('reg-sale-amt3', main.매각액3 || 0);
+        Val.set('reg-sale-profit', main.매각손익률 || "");
+        Val.set('reg-naver-cur', main.네이버광고 || 0); Val.set('reg-naver-past', main.네이버광고과거 || 0);
+        Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "무");
 
-    const container = document.getElementById('floor-rows-container');
-    container.innerHTML = "";
-    if (details) {
-        console.log(details)
-        details.forEach(d => addFloorRow(d));
+        const container = document.getElementById('floor-rows-container');
+        container.innerHTML = "";
+        if (details) {
+            console.log(details)
+            details.forEach(d => addFloorRow(d));
+        }
+
+        calculatePropertyStats();
+        await loadMemos(PNU);
+
+        // ✅ 2. 로딩 완료 후 애니메이션 숨김
+        hideLoadingOverlay();
+
+    } catch (error) {
+        console.error('데이터 로드 중 오류:', error);
+        hideLoadingOverlay();
+    }
+}
+
+/**
+ * 로딩 오버레이 표시
+ */
+function showLoadingOverlay() {
+    let overlay = document.getElementById('loading-overlay');
+
+    // 오버레이가 없으면 생성
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        overlay.innerHTML = `
+            <div class="bg-white rounded-lg p-8 shadow-2xl text-center">
+                <div class="flex justify-center mb-4">
+                    <svg class="animate-spin h-12 w-12 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+                <p class="text-gray-700 font-semibold text-lg">정보를 불러오는 중입니다...</p>
+                <p class="text-gray-500 text-sm mt-2">잠시만 기다려주세요.</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
     }
 
+    // 오버레이 표시
+    overlay.style.display = 'flex';
+}
 
-    calculatePropertyStats();
-    loadMemos(PNU);
+/**
+ * 로딩 오버레이 숨김
+ */
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
 }
 
 // =========================================================
@@ -274,11 +329,12 @@ function calculatePropertyStats() {
         fullSum.man += m;
 
         if (isEmpty === "무") {
-            
-        } else {
             currentSum.sec += s;
             currentSum.rent += r;
             currentSum.man += m;
+        } 
+        
+        if (isEmpty === "유") {
             emptyArea += area;
         }
     });
@@ -311,12 +367,14 @@ function calculatePropertyStats() {
 
     if (totalArea > 0) {
         Val.set('reg-price-total', Math.round(salePrice / (totalArea * 0.3025)));
-        const rentFullLand = fullSum.rent * 10000 / totalArea * 0.3025;
+        const rentFullLand = (fullSum.rent / (totalArea * 0.3025)).toFixed(0);
         Val.set('rent-full-land', rentFullLand)
-        const rentCurrentLand = currentSum.rent * 10000 / (totalArea * 0.3025 - emptyArea);
+        const rentCurrentLand = (currentSum.rent / (totalArea * 0.3025 - emptyArea)).toFixed(0);
+        console.log(rentCurrentLand)
         Val.set('rent-current-land', rentCurrentLand)
         if (totalVacancyStatus === "유") {
-            Val.set('reg-land-rent', rentCurrentLand);}
+            Val.set('reg-land-rent', rentCurrentLand);
+        }
         else {
             Val.set('reg-land-rent', rentFullLand);
         }
@@ -333,8 +391,7 @@ function calculatePropertyStats() {
         Val.set('reg-bc-ratio', (buildArea / landArea) * 100);
         Val.set('reg-far-ratio', (farArea / landArea) * 100);
         const baseWon = landArea * gongsi * 1.9;
-        Val.set('reg-gongsi-total', baseWon); Val.set('reg-gongsi-ratio', (baseWon / salePrice) * 100);
-        Val.set('rent-current-land',)
+        Val.set('reg-gongsi-total', baseWon); Val.set('reg-gongsi-ratio', (baseWon - salePrice) / salePrice * 100);
     }
 
     const investCash = Val.get('reg-invest-cash'), loanRate = Val.get('reg-loan-rate');
@@ -375,8 +432,7 @@ function addFloorRow(data) {
     const row = document.createElement('div');
     row.className = "grid grid-cols-12 gap-2 p-2 bg-white border rounded-lg items-center shadow-sm property-row";
 
-    // DB의 Boolean(false/true)을 "무"/"유"로 변환하여 매칭
-    const isEmpty = data?.공실유무 === true;
+    const isEmptyValue = data?.공실유무 || '모름';
 
     // DB의 '원' 단위를 화면 표시용 '만원'으로 변환 (10억 -> 100,000)
     const displaySec = data?.보증금 ? Math.round(data.보증금 / 10000).toLocaleString() : '0';
@@ -393,9 +449,9 @@ function addFloorRow(data) {
         <div class="col-span-1"><input type="text" class="w-full border rounded p-1" value="${data?.임대차기간 || ''}"></div>
         <div class="col-span-1">
             <select class="floor-empty w-full border rounded p-1" onchange="calculatePropertyStats()">
-                <option value="모름">모름</option>
-                <option value="무">무</option>
-                <option value="유">유</option>
+                <option value="모름" ${isEmptyValue === '모름' ? 'selected' : ''}>모름</option>
+                <option value="무" ${isEmptyValue === '무' ? 'selected' : ''}>무</option>
+                <option value="유" ${isEmptyValue === '유' ? 'selected' : ''}>유</option>
             </select>
         </div>
         <div class="col-span-1 text-center"><button onclick="this.parentElement.parentElement.remove(); calculatePropertyStats();" class="text-red-400"><i class="fa-solid fa-trash-can"></i></button></div>
@@ -516,7 +572,7 @@ async function deleteMemo(memoId) {
     if (!confirm('정말 이 메모를 삭제하시겠습니까?')) {
         return;
     }
-    
+
     try {
         const response = await fetch('/api/delete_memo', {
             method: 'POST',
@@ -525,9 +581,9 @@ async function deleteMemo(memoId) {
             },
             body: JSON.stringify({ id: memoId })
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok) {
             loadMemos(PNU);  // 메모 목록 새로고침
         } else {
@@ -635,6 +691,8 @@ async function registerProperty() {
             isEmpty: inps[7].value
         });
     });
+
+    console.log(payload);
 
     // 서버 요청
     try {
