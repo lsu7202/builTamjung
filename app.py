@@ -282,8 +282,8 @@ def build_where_clause(filters, params):
             range_parts = []
             for col in ["매각일1", "매각일2", "매각일3"]:
                 p_parts = []
-                if sales_min: p_parts.append(f'L."{col}" >= :s_min'); params['s_min'] = int(sales_min)
-                if sales_max: p_parts.append(f'L."{col}" <= :s_max'); params['s_max'] = int(sales_max)
+                if sales_min: p_parts.append(f'L."{col}" >= :s_min'); params['s_min'] = (sales_min)
+                if sales_max: p_parts.append(f'L."{col}" <= :s_max'); params['s_max'] = (sales_max)
                 range_parts.append(f"({' AND '.join(p_parts)})")
             sales_conds.append(f"({' OR '.join(range_parts)})")
         if sales_conds: where_clauses.append(f"({' AND '.join(sales_conds)})")
@@ -480,6 +480,8 @@ def get_prop_main():
         "빌탐정광고등록유무": prop.toad_ad
     }
     return jsonify({"success": True, "data": result}), 200
+
+
 
 @app.route('/api/save_prop_main', methods=['POST'])
 def save_prop_main():

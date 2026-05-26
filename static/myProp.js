@@ -210,8 +210,8 @@ async function fillPropertyDataHandler() {
         Val.set('reg-demolition', prop.멸실 || "확인중");
 
         // [4] 건물 정보
-        Val.set('reg-floor-above', main.규모지상 || "");
-        Val.set('reg-floor-below', main.규모지하 || "");
+        Val.set('reg-floor-above', main.규모지상 || 0);
+        Val.set('reg-floor-below', main.규모지하 || 0);
         Val.set('reg-land-area', main.대지면적 || 0);
         Val.set('reg-build-area', main.건축면적 || 0);
         Val.set('reg-total-area-val', main.연면적 || 0);
@@ -225,7 +225,7 @@ async function fillPropertyDataHandler() {
 
         // [5] 토지 정보
         Val.set('reg-total-land-area', main.토지면적 || 0);
-        Val.set('reg-jimok', main.지목 || "");
+        Val.set('reg-jimok', main.지목 || 0);
         Val.set('reg-zoning', main.용도지역 || "");
         Val.set('reg-land-status', main.토지이용상황 || "");
         Val.set('reg-main-code', main.주용도 || "");
@@ -240,9 +240,9 @@ async function fillPropertyDataHandler() {
         Val.set('reg-sale-date1', main.매각일1 || ""); Val.set('reg-sale-amt1', main.매각액1 || 0);
         Val.set('reg-sale-date2', main.매각일2 || ""); Val.set('reg-sale-amt2', main.매각액2 || 0);
         Val.set('reg-sale-date3', main.매각일3 || ""); Val.set('reg-sale-amt3', main.매각액3 || 0);
-        Val.set('reg-sale-profit', main.매각손익률 || "");
+        Val.set('reg-sale-profit', main.매각손익률 || 0);
         Val.set('reg-naver-cur', main.네이버광고 || 0); Val.set('reg-naver-past', main.네이버광고과거 || 0);
-        Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "무");
+        Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "");
 
         const container = document.getElementById('floor-rows-container');
         container.innerHTML = "";
