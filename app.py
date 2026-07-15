@@ -93,6 +93,12 @@ engine = create_engine(
     pool_pre_ping=True       # 연결 유효성 자동 체크
 )
 
+# --- 크롤링 업로드 / 임대시세 분석 API (Blueprint) ---
+from api_crawl import create_crawl_blueprint
+from api_rent import create_rent_blueprint
+app.register_blueprint(create_crawl_blueprint(engine))
+app.register_blueprint(create_rent_blueprint(engine))
+
 with app.app_context():
     try:
         setup_db_triggers(engine)
@@ -1042,7 +1048,11 @@ def login_required():
     # 2. 예외 처리해야 할 경로 정의 (로그인 안 해도 접근 가능해야 하는 곳)
     # 'auth' (HTML 페이지), 'login' (인증 API), 'signup' (회원가입 API), 'static' (이미지/CSS 등)
     allowed_endpoints = ['auth', 'login', 'signup', 'static']
-    
+
+    # 데스크탑 크롤링 업로드 API는 세션 대신 X-API-KEY로 자체 인증 (api_crawl.py)
+    if request.blueprint == 'crawl':
+        return None
+
     # 3. 세션이 없고, 현재 요청한 곳이 허용된 경로가 아니면 /auth로 강제 이동
     if not user_id and request.endpoint not in allowed_endpoints:
         return redirect(url_for('auth'))

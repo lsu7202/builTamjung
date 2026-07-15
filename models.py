@@ -188,6 +188,58 @@ class SeoulLandInfo(db.Model):
               postgresql_ops={'소유자현재': 'gist_trgm_ops'}),
     )
 
+class CrawlBatch(db.Model):
+    """데스크탑 크롤링 업로드 배치 (시계열 스냅샷 단위)"""
+    __tablename__ = 'crawl_batches'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    kind = db.Column(db.Text, nullable=False)  # 'naver_sale' | 'naver_rent'
+    status = db.Column(db.Text, nullable=False, default='uploading')  # uploading | completed | failed
+    started_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
+    completed_at = db.Column(db.DateTime(timezone=True))
+    record_count = db.Column(db.Integer, default=0)
+    note = db.Column(db.Text)
+
+    __table_args__ = (
+        Index('idx_crawl_batches_kind_status', 'kind', 'status', 'completed_at'),
+    )
+
+class NaverAdHistory(db.Model):
+    """네이버광고(매매) 가격 시계열 이력"""
+    __tablename__ = 'naver_ad_history'
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('crawl_batches.id', ondelete='CASCADE'), nullable=False)
+    address = db.Column(db.Text)   # seoul_land_info."통합주소" 조인 키
+    price = db.Column(db.Numeric)  # 원 단위
+    lat = db.Column(db.Float(53))
+    lon = db.Column(db.Float(53))
+
+    __table_args__ = (
+        Index('idx_nah_batch_addr', 'batch_id', 'address'),
+    )
+
+class NaverRentArticle(db.Model):
+    """네이버임대광고 매물 시계열 (매물번호는 네이버 갱신 주기 후 소멸하므로 배치 시점 값을 전부 보존)"""
+    __tablename__ = 'naver_rent_articles'
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('crawl_batches.id', ondelete='CASCADE'), nullable=False)
+    article_no = db.Column(db.Text, nullable=False)  # 동일주소 그룹 대표 매물번호
+    deposit = db.Column(db.Numeric)          # 보증금(원, 그룹 최저가 기준)
+    rent = db.Column(db.Numeric)             # 월세(원)
+    floor_info = db.Column(db.Text)          # 원문 "4/5", "B1/5"
+    floor_num = db.Column(db.SmallInteger)   # 파싱값: 4, -1(지하), 실패 시 NULL
+    area_contract = db.Column(db.Float)      # 계약(공급)면적 ㎡ (리스트 API area1)
+    area_exclusive = db.Column(db.Float)     # 전용면적 ㎡ (리스트 API area2)
+    address = db.Column(db.Text)             # 역지오코딩 지번주소
+    lat = db.Column(db.Float(53))
+    lon = db.Column(db.Float(53))
+    geom = db.Column(Geometry(geometry_type='POINT', srid=4326, spatial_index=False))
+
+    __table_args__ = (
+        Index('idx_nra_batch', 'batch_id'),
+        Index('idx_nra_geom', 'geom', postgresql_using='gist'),
+        db.UniqueConstraint('batch_id', 'article_no', name='uq_nra_batch_article'),
+    )
+
 # --------------------------------------------------------------------------
 # 2. Database Trigger Setup (자동화의 핵심)
 # --------------------------------------------------------------------------

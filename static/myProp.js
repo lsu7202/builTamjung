@@ -243,6 +243,7 @@ async function fillPropertyDataHandler() {
         Val.set('reg-sale-profit', main.매각손익률 || 0);
         Val.set('reg-naver-cur', main.네이버광고 || 0); Val.set('reg-naver-past', main.네이버광고과거 || 0);
         Val.set('reg-builtamjung-ad', main.빌탐정광고등록유무 || "");
+        loadNaverAdHistory(PNU); // 광고가 시계열 이력 표시 (비동기, 실패해도 무시)
 
         const container = document.getElementById('floor-rows-container');
         container.innerHTML = "";
@@ -723,4 +724,52 @@ function initRegRegionSelectors() {
         dongSelect.innerHTML = '<option value=\"\">선택</option>';
         if (DIVISIONS[siSelect.value]) DIVISIONS[siSelect.value].forEach(dong => { const opt = document.createElement('option'); opt.value = dong; opt.innerText = dong; dongSelect.appendChild(opt); });
     };
+}
+// =========================================================
+// 네이버광고(매매) 시계열 이력 표시 — 크롤링 배치별 광고가 변동
+// =========================================================
+async function loadNaverAdHistory(pnu) {
+    const box = document.getElementById('naver-ad-history');
+    if (!box) return;
+    if (!pnu) {
+        box.innerHTML = '<span class="text-gray-400">매물을 불러오면 표시됩니다.</span>';
+        return;
+    }
+    box.innerHTML = '<span class="text-gray-400">이력 조회 중...</span>';
+    try {
+        const res = await fetch('/api/naver_ad/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pnu })
+        });
+        const rows = await res.json();
+        if (!res.ok || !Array.isArray(rows)) {
+            box.innerHTML = '<span class="text-gray-400">이력 조회 실패</span>';
+            return;
+        }
+        if (rows.length === 0) {
+            box.innerHTML = '<span class="text-gray-400">수집된 광고가 이력이 없습니다. (해당 시점에 네이버 광고가 없었거나 아직 수집 전)</span>';
+            return;
+        }
+        // rows: 최신순. 변동률은 직전(과거) 수집분 대비.
+        const html = rows.map((r, i) => {
+            const prev = rows[i + 1];
+            const eok = (r.price / 100000000).toFixed(2).replace(/\.?0+$/, '');
+            let change = '<span class="text-gray-300 ml-1">-</span>';
+            if (prev && prev.price > 0) {
+                const pct = ((r.price - prev.price) / prev.price * 100);
+                if (pct > 0) change = `<span class="text-red-500 ml-1">▲ ${pct.toFixed(1)}%</span>`;
+                else if (pct < 0) change = `<span class="text-blue-500 ml-1">▼ ${Math.abs(pct).toFixed(1)}%</span>`;
+                else change = '<span class="text-gray-400 ml-1">0%</span>';
+            }
+            const latest = i === 0 ? '<span class="text-[10px] bg-blue-100 text-blue-600 rounded px-1 ml-1">최신</span>' : '';
+            return `<div class="flex justify-between items-center py-0.5 border-b border-gray-100 last:border-0">
+                        <span class="text-gray-500">${r.date}${latest}</span>
+                        <span class="font-bold">${eok}억${change}</span>
+                    </div>`;
+        }).join('');
+        box.innerHTML = html;
+    } catch (e) {
+        box.innerHTML = '<span class="text-gray-400">이력 조회 실패</span>';
+    }
 }

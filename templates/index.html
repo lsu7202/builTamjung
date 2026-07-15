@@ -1021,6 +1021,9 @@
                     <div id="tab-map" class="tab-btn" onclick="switchView('map')">
                         지도
                     </div>
+                    <div id="tab-rent" class="tab-btn" onclick="switchView('rent')">
+                        임대시세
+                    </div>
                 </div>
 
                 <div id="spreadsheet-view">
@@ -1627,6 +1630,13 @@
                                         <input type="text" id="reg-naver-rate" data-unit="rate"
                                             class="w-full border rounded p-1.5 text-xs bg-gray-50" readonly>
                                     </div>
+                                    <div class="col-span-2">
+                                        <label class="text-[11px] font-bold text-gray-400">광고가 이력 (자동 수집)</label>
+                                        <div id="naver-ad-history"
+                                            class="border rounded p-2 text-xs bg-gray-50 max-h-40 overflow-y-auto">
+                                            <span class="text-gray-400">매물을 불러오면 표시됩니다.</span>
+                                        </div>
+                                    </div>
                                     <div class="col-span-2"><label class="text-[10px] text-gray-400">빌탐정 광고 유무</label>
                                         <select id="reg-builtamjung-ad" data-unit="text" onchange="Val.sync(this)"
                                             class="w-full border rounded p-1 text-[11px]">
@@ -1637,6 +1647,50 @@
                                 </div>
                             </section>
                         </div>
+                    </div>
+                </div>
+
+                <div id="rent-view" class="view-hidden p-6 bg-white overflow-y-auto h-full">
+                    <div class="max-w-6xl mx-auto space-y-6 pb-20">
+
+                        <section class="bg-emerald-50 p-5 rounded-xl border border-emerald-100 shadow-sm">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-base font-black text-emerald-800">
+                                    <i class="fa-solid fa-chart-line mr-2"></i>주변 임대시세 분석
+                                </h3>
+                                <div class="flex gap-2">
+                                    <button id="btn-rent-analyze" onclick="RentAnalysis.run()"
+                                        class="px-6 py-1.5 bg-emerald-600 text-white rounded text-xs font-bold hover:bg-emerald-700 disabled:bg-gray-300 shadow-md">분석
+                                        시작</button>
+                                    <button id="btn-rent-excel" onclick="RentAnalysis.downloadExcel()" disabled
+                                        class="px-3 py-1.5 border border-emerald-300 rounded text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 disabled:text-gray-400 disabled:border-gray-200">
+                                        <i class="fa-solid fa-file-excel mr-1"></i>엑셀 다운로드</button>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-end gap-4 mb-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-gray-500 mb-1">기준시점 (크롤링 배치)</label>
+                                    <select id="rent-batch-select"
+                                        class="border border-gray-300 rounded px-2 py-1.5 text-xs bg-white min-w-[220px]">
+                                        <option value="">불러오는 중...</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-gray-500 mb-1">반경 (km)</label>
+                                    <input id="rent-radius" type="number" step="0.1" min="0.1" max="3" value="0.5"
+                                        class="border border-gray-300 rounded px-2 py-1.5 text-xs w-24 text-center">
+                                </div>
+                                <button onclick="RentAnalysis.addRow()"
+                                    class="px-3 py-1.5 border border-gray-300 rounded text-xs font-bold text-gray-600 bg-white hover:bg-gray-50">
+                                    <i class="fa-solid fa-plus mr-1"></i>주소 추가</button>
+                            </div>
+
+                            <div id="rent-target-rows" class="space-y-2"></div>
+                            <p id="rent-status" class="text-xs text-gray-500 mt-3"></p>
+                        </section>
+
+                        <div id="rent-results" class="space-y-8"></div>
                     </div>
                 </div>
 
@@ -1651,6 +1705,7 @@
     </div>
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script src="{{ url_for('static', filename='myProp.js') }}"></script>
+    <script src="{{ url_for('static', filename='rentAnalysis.js') }}"></script>
     <script type="module">
         import { convertAddressToPNU } from "{{ url_for('static', filename='bjdcode.js') }}";
         window.convertAddressToPNU = convertAddressToPNU;
@@ -2694,15 +2749,17 @@
             const tableView = document.getElementById('spreadsheet-view');
             const mapView = document.getElementById('map-view');
             const propertyView = document.getElementById('property-view');
+            const rentView = document.getElementById('rent-view');
 
             // 2. 모든 탭 버튼 요소 가져오기
             const tabTable = document.getElementById('tab-table');
             const tabMap = document.getElementById('tab-map');
             const tabProperty = document.getElementById('tab-property');
+            const tabRent = document.getElementById('tab-rent');
 
             // 3. 일단 모든 뷰를 숨기고 모든 탭의 active 클래스 제거
-            [tableView, mapView, propertyView].forEach(view => view.classList.add('view-hidden'));
-            [tabTable, tabMap, tabProperty].forEach(tab => tab.classList.remove('active'));
+            [tableView, mapView, propertyView, rentView].forEach(view => view.classList.add('view-hidden'));
+            [tabTable, tabMap, tabProperty, tabRent].forEach(tab => tab.classList.remove('active'));
 
             // 4. 선택된 뷰만 보여주고 해당 탭 활성화
             if (viewName === 'table') {
@@ -2721,6 +2778,11 @@
             else if (viewName === 'property') {
                 propertyView.classList.remove('view-hidden');
                 tabProperty.classList.add('active');
+            }
+            else if (viewName === 'rent') {
+                rentView.classList.remove('view-hidden');
+                tabRent.classList.add('active');
+                RentAnalysis.init(); // 최초 진입 시 배치 목록 로드 + 주소행 1개 생성
             }
         }
 

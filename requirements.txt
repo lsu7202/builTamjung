@@ -9,3 +9,4 @@ flask-sqlalchemy
 flask-migrate 
 geoalchemy2
 python-dotenv
+XlsxWriter
