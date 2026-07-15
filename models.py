@@ -120,6 +120,9 @@ class SeoulLandInfo(db.Model):
     sido = db.Column(db.Text, name="시도")
     sigungu = db.Column(db.Text, name="시군구")
     address = db.Column(db.Text, name="주소")
+    # 외부 데이터(네이버 크롤링 주소, 실거래가 주소) 조인 전용 파생 컬럼: 시도+시군구+주소
+    # 검색은 PNU(고유번호) 기준을 유지한다. (마이그레이션 c4e8f2a91b37에서 백필)
+    full_address = db.Column(db.Text, name="통합주소")
     jimok = db.Column(db.Text, name="지목")
     land_usage_status = db.Column(db.Text, name="토지이용상황")
     shape = db.Column(db.Text, name="형상")
@@ -179,6 +182,7 @@ class SeoulLandInfo(db.Model):
 
     __table_args__ = (
         Index('idx_seoul_land_info_pnu', '고유번호'),
+        Index('idx_sli_full_addr', '통합주소'),
         Index('idx_seoul_land_info_geom', 'geom', postgresql_using='gist'),
         Index('idx_trgm_address', '주소', 
               postgresql_using='gist', 
