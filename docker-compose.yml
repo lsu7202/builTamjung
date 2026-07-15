@@ -6,12 +6,18 @@ services:
       - "7070:7070"
     restart: always
     env_file:
-      - .env 
+      - .env
     depends_on:
       - postgres-db
     volumes:
       # 💡 개발용: 로컬 코드 변경 시 컨테이너에 바로 반영되도록 마운트
       - .:/app
+    # 컨테이너 로그 무한 증식 방지 (컨테이너당 최대 10MB x 3개)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # 2. PostgreSQL 데이터베이스 서비스
   postgres-db:
@@ -32,6 +38,12 @@ services:
       # 💡 DB 데이터 영구 저장을 위한 볼륨 설정
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    # 컨테이너 로그 무한 증식 방지 (컨테이너당 최대 10MB x 3개)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:
