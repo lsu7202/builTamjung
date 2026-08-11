@@ -12,3 +12,5 @@ meta_info.txt
 부속지번.py
 backup.sql
 데이터
+# DB 백업 복원 파일 (대용량, 직접 복사)
+db_init/20_restore.sql

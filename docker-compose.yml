@@ -37,7 +37,8 @@ services:
     volumes:
       # 💡 DB 데이터 영구 저장을 위한 볼륨 설정
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      # 볼륨 최초 생성 시 자동 실행: 확장 생성 + (있으면) 백업 복원 — db_init/README.md 참조
+      - ./db_init:/docker-entrypoint-initdb.d
     # 컨테이너 로그 무한 증식 방지 (컨테이너당 최대 10MB x 3개)
     logging:
       driver: "json-file"
