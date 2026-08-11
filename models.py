@@ -426,11 +426,16 @@ def setup_db_triggers(engine):
         FOR EACH ROW EXECUTE FUNCTION fn_calculate_main_on_price_change();
     END $$;
     """
+    # 확장 생성은 별도 트랜잭션으로 먼저 확정 — 트리거 생성이 실패(테이블 미존재 등)해도
+    # pg_trgm 확장까지 롤백되어 이후 마이그레이션(trgm 인덱스)이 깨지는 일 방지
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             conn.execute(text(extension_sql))
+    except Exception as e:
+        print(f"Extension Setup Notice: {e}")
+    try:
+        with engine.begin() as conn:
             conn.execute(text(trigger_sql))
-            conn.commit()
     except Exception as e:
         # 이 시점에 에러가 나더라도 앱 기동이 멈추지 않도록 로그만 출력
         print(f"Trigger Setup Notice: {e}")
