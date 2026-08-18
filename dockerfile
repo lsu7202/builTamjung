@@ -17,9 +17,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 3. 소스 코드 복사
 COPY . .
 
-# 4. 실행 권한 부여 및 ENTRYPOINT 설정
-RUN chmod +x entrypoint.sh
-ENTRYPOINT ["./entrypoint.sh"]
+# 4. ENTRYPOINT 설정
+#    /app 밖(/entrypoint.sh)에 두는 이유: docker-compose가 개발 편의로 .:/app을 마운트하는데,
+#    /app 안에 두면 호스트 폴더가 이미지 파일을 가려서 (특히 Windows에서) 실행이 깨진다.
+#    sed로 CRLF 제거: Windows에서 빌드해도 shebang이 깨지지 않도록 방어.
+COPY entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
 EXPOSE 7070
 
